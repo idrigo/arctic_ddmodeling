@@ -1,17 +1,17 @@
 import netCDF4 as nc
 import netcdftime
 import pandas as pd
-
 pd.options.display.float_format = '{:,.2f}'.format
 import numpy as np
-from scipy import spatial
-
 np.set_printoptions(precision=3, suppress=True)
-
-import glob
+from scipy import spatial
 from tqdm import tqdm
+
+import os
+import glob
 import datetime
 
+import config as cfg
 
 def coords_to_index(filename, coords):
     # The idea is to make a table, where all the model grid points are stored in a following manner:
@@ -47,7 +47,9 @@ def coords_to_index(filename, coords):
     result = tree.query(coords)[1]
 
     idxs = array[result][[2, 3]].astype(int)
-    return idxs
+    true_coords = array[result][[0,1]]
+
+    return idxs, true_coords
 
 
 def file_time(dset):
@@ -91,8 +93,11 @@ def makedf(filelist, varlist):
     data = []
     for f in tqdm(filelist):
         dset = nc.Dataset(f, 'r')
-        filedata = extract_point(dset, idxs, varlist)
-        data.append(filedata)
+        try:
+            filedata = extract_point(dset, idxs, varlist)
+            data.append(filedata)
+        except:
+            tqdm.write('Problem with file {}'.format(f))
         dset.close()
 
     df = pd.DataFrame(data=data, columns=['date'] + varlist)
@@ -102,27 +107,30 @@ def makedf(filelist, varlist):
     return df
 
 
-lat = 80
-lon = 90
-idxs = coords_to_index('testdata/ARCTIC_1h_T_grid_T_20170101-20170101.nc', [lat, lon])
+lat = cfg.lat
+lon = cfg.lon
+path = cfg.path
+
+idxs, true_coords = coords_to_index(glob.glob(path+'/ARCTIC_1h_T_grid_T_*.nc')[0], [lat, lon])
+print('Nearest grid point is {} {}'.format(true_coords[0], true_coords[1]))
 
 # T-grid
 print('Processing T-grid files')
-filelist_T = glob.glob('/Users/drigo/ITMO/_disser/surrogate/testdata/ARCTIC_1h_T_grid_T_*.nc')
+filelist_T = glob.glob(path+'/ARCTIC_1h_T_grid_T_*.nc')
 var_list_T = ['sossheig', 'votemper', 'vosaline']
 
 df_T = makedf(filelist_T, var_list_T)
 
 # UV-grid
 print('Processing UV-grid files')
-filelist_UV = glob.glob('/Users/drigo/ITMO/_disser/surrogate/testdata/ARCTIC_1h_UV_grid_UV_*.nc')
+filelist_UV = glob.glob(path+'/ARCTIC_1h_UV_grid_UV_*.nc')
 var_list_UV = ['vomecrty', 'vozocrtx']
 
 df_UV = makedf(filelist_UV, var_list_UV)
 
 # ice-grid
 print('Processing ice-grid files')
-filelist_ice = glob.glob('/Users/drigo/ITMO/_disser/surrogate/testdata/ARCTIC_1h_ice_grid_TUV_*.nc')
+filelist_ice = glob.glob(path+'/ARCTIC_1h_ice_grid_TUV_*.nc')
 var_list_ice = ['ice_volume', 'iceconc', 'icethic_cea', 'siconcat', 'sithicat', 'snowthic_cea',
                 'uice_ipa', 'vice_ipa']
 
@@ -131,7 +139,9 @@ df_ice = makedf(filelist_ice, var_list_ice)
 df_out = pd.concat([df_T, df_UV, df_ice], axis=1)
 df_out.insert(loc=0,
               column='Lat',
-              value=lat)
+              value=true_coords[0])
 df_out.insert(loc=0,
               column='Lon',
-              value=lon)
+              value=true_coords[1])
+
+df_out.to_csv('data_{}.csv'.format(path.split('/')[-1]), sep='\t', encoding='utf-8')
