@@ -1,3 +1,4 @@
 
 *.nc
 testdata/.DS_Store
+.idea/*
