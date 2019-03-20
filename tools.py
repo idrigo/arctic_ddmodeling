@@ -8,7 +8,9 @@ from scipy import spatial
 
 
 class MyNetCDF:
-
+    """
+    Some instruments to work with NetCDF files
+    """
     def __init__(self, dset):
         self.dset = dset
 
@@ -20,9 +22,10 @@ class MyNetCDF:
             pass
 
     def coords_to_index(self, coords):
-
-        """The idea is to make a table, where all the model grid points are stored in a following manner:
-        latitide - longitude - x index - y index And make query to this table"""
+        """
+        The idea is to make a table, where all the model grid points are stored in a following manner:
+        latitide - longitude - x index - y index And make query to this table
+        """
 
         try:
             lat = self.dset.variables['nav_lat'][:]
@@ -96,43 +99,68 @@ class MyNetCDF:
         datestr = datevar.strftime('%Y%m%d')
         return datestr
 
+    def get_timeseries(self, lat, lon, variables):
+        """
+        Method to get timeseries of time-distributed 4D datasets
+        :param lat: integer, latitude
+        :param lon: integer, longitude
+        :param variables: list of variables to extract
+        :return: dataframe with time-distributed data
+        """
+        idxs, truecoords = self.coords_to_index([lat, lon])
+        data = []
+        time = []
+        for i, date in enumerate(self.dset.variables['time'][:]):
+            data.append(self.extract_point(x=idxs[0], y=idxs[1], time=i, variables=variables))
+            time.append(self.file_time(i))
+
+        df = pd.DataFrame(data=data, columns=variables)
+        df['Date'] = time
+        df.set_index(pd.to_datetime(df['Date'], format='%Y-%m-%d'), inplace=True)
+        df.drop('Date', inplace=True, axis=1)
+
+        return df
+
 
 class Preprocessing:
 
-    def __init__(self):
-        self.df = None
+    def __init__(self, df=None):
+            self.df = df
 
-    def load_csv(self, filepath, continious_check = False):
+    def load_csv(self, filepath, continuous_check = True):
         ds = pd.read_csv(filepath, sep='\t')
         ds.set_index(pd.to_datetime(ds['Date'], format='%Y-%m-%d'), inplace=True)
         ds.drop('Date', inplace=True, axis=1)
 
         self.df = ds
-        if continious_check:
-            self.continious_check()
+        if continuous_check:
+            self.continuous_check()
 
-        return ds
+        return self.df
 
-    def load_pickle(self, filepath, continious_check=False):
+    def load_pickle(self, filepath, continuous_check=False):
         ds = pd.read_pickle(filepath)
         self.df = ds
-        if continious_check:
-            self.continious_check()
+        if continuous_check:
+            self.continuous_check()
         return ds
 
-    def continious_check(self):
+    def continuous_check(self, method = 'ffill'):
+        """
+        Method to check the data for missing dates
+        :param method: {‘backfill’, ‘bfill’, ‘pad’, ‘ffill’, None}
+        :return:
+        """
         idx = pd.date_range(start=self.df.index[0],
                             end=self.df.index[0] + pd.offsets.YearEnd(),
                             freq='D')
-        try:
-            ds = self.df.reindex(idx, fill_value=np.nan)
-            ds.fillna(method='ffill', inplace=True)
-        except:
-            # if no gaps in data
-            pass
+        ds = self.df.reindex(idx, fill_value=np.nan)
+        print('Found {} gaps'.format(ds.isna().sum().values[0]))
+
+        ds.fillna(method=method, inplace=True)
 
         self.df = ds
-        return ds
+        return
 
     def velocity_module(self, x):  # simple function to convert UV velocity to velocity module
         return np.sqrt(x[0] ** 2 + x[1] ** 2)
