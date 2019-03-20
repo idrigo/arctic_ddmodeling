@@ -96,3 +96,43 @@ class MyNetCDF:
         datestr = datevar.strftime('%Y%m%d')
         return datestr
 
+
+class Preprocessing:
+
+    def __init__(self):
+        self.df = None
+
+    def load_csv(self, filepath, continious_check = False):
+        ds = pd.read_csv(filepath, sep='\t')
+        ds.set_index(pd.to_datetime(ds['Date'], format='%Y-%m-%d'), inplace=True)
+        ds.drop('Date', inplace=True, axis=1)
+
+        self.df = ds
+        if continious_check:
+            self.continious_check()
+
+        return ds
+
+    def load_pickle(self, filepath, continious_check=False):
+        ds = pd.read_pickle(filepath)
+        self.df = ds
+        if continious_check:
+            self.continious_check()
+        return ds
+
+    def continious_check(self):
+        idx = pd.date_range(start=self.df.index[0],
+                            end=self.df.index[0] + pd.offsets.YearEnd(),
+                            freq='D')
+        try:
+            ds = self.df.reindex(idx, fill_value=np.nan)
+            ds.fillna(method='ffill', inplace=True)
+        except:
+            # if no gaps in data
+            pass
+
+        self.df = ds
+        return ds
+
+    def velocity_module(self, x):  # simple function to convert UV velocity to velocity module
+        return np.sqrt(x[0] ** 2 + x[1] ** 2)
