@@ -7,9 +7,7 @@ np.set_printoptions(precision=3, suppress=True)
 from scipy import spatial
 from tqdm import tqdm
 
-import os
 import glob
-import datetime
 
 import config as cfg
 
@@ -50,7 +48,6 @@ def coords_to_index(filename, coords):
     true_coords = array[result][[0,1]]
 
     return idxs, true_coords
-
 
 def file_time(dset):
     tname = "time_counter"

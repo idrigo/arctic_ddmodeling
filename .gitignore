@@ -2,6 +2,8 @@
 *.nc
 testdata/.DS_Store
 .idea/*
-./ipynb_checkpoints/*
-.ipynb_checkpoints/dataload-checkpoint.ipynb
+.ipynb_checkpoints/*
 *.csv
+*.pyc
+data/.DS_Store
+.DS_Store
