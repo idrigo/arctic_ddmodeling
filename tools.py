@@ -9,6 +9,7 @@ from scipy import spatial
 
 class MyNetCDF:
     """
+    TODO: implement xarray
     Some instruments to work with NetCDF files
     """
     def __init__(self, dset):
@@ -49,12 +50,12 @@ class MyNetCDF:
                                  lon_mesh))
 
         latlonarr = array[:, [0, 1]]
-
-        # Here the KD-tree algorythm is used for finding the closest spatial point (nearest neighbour)
-        # More information about the algorithm
-        # https://docs.scipy.org/doc/scipy/reference/generated/scipy.spatial.KDTree.html
-        # input: array(2d array of points to search), query (list-like coordinates to find neighbour)
-
+        '''
+         Here the KD-tree algorythm is used for finding the closest spatial point (nearest neighbour)
+         More information about the algorithm
+         https://docs.scipy.org/doc/scipy/reference/generated/scipy.spatial.KDTree.html
+         input: array(2d array of points to search), query (list-like coordinates to find neighbour)
+        '''
         tree = spatial.KDTree(latlonarr, leafsize=100)
         result = tree.query(coords)[1]
 
@@ -87,7 +88,6 @@ class MyNetCDF:
             tname = 'time'
             nctime = self.dset.variables[tname][time_step]  # get values
             t_unit = self.dset.variables[tname].units  # get unit
-
 
         try:
             t_cal = self.dset.variables[tname].calendar
@@ -145,7 +145,7 @@ class Preprocessing:
             self.continuous_check()
         return ds
 
-    def continuous_check(self, method = 'ffill'):
+    def continuous_check(self, method='ffill'):
         """
         Method to check the data for missing dates
         :param method: {‘backfill’, ‘bfill’, ‘pad’, ‘ffill’, None}

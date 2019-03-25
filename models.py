@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 
 
 class Fitter:
@@ -17,6 +18,16 @@ class Fitter:
         self.y_test = y_test
 
         self.prediction = None
+
+        self.method = None
+
+    def set_method(self, method):
+        from sklearn.linear_model import LinearRegression
+        self.method = {'linear': LinearRegression()
+                       }.get(method)
+
+        print('Method {} is set'.format(self.method))
+        return
 
     def define_target(self, target_var, feature_list):
         """
@@ -43,13 +54,14 @@ class Fitter:
 
         return
 
-    def linear_regression_prediction(self):
+    def predict(self):
         """
-        Implements prediction using linear regression
+        Implements prediction using method provided
         :return:
         """
-        from sklearn.linear_model import LinearRegression
-        reg = LinearRegression().fit(self.X_train, self.y_train)
+
+        reg = self.method
+        reg.fit(self.X_train, self.y_train)
         predict = reg.predict(self.X_test)
         predict = predict.ravel()
         self.prediction = pd.Series(data=predict,
@@ -75,7 +87,7 @@ class Fitter:
                          axis=1)
         data.columns = ['Test', 'Prediction']
         data.index.names = ['Date']
-        
+
         plt.figure(figsize=(16, 6))
         sns.set(style="darkgrid")
         sns.lineplot(data=data,
