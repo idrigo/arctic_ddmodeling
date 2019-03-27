@@ -4,4 +4,6 @@ testdata/.DS_Store
 .ipynb_checkpoints/*
 *.pyc
 data/.DS_Store
+testdata/*
+data/*
 .DS_Store

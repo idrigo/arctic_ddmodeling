@@ -5,6 +5,7 @@ pd.options.display.float_format = '{:,.2f}'.format
 import numpy as np
 np.set_printoptions(precision=3, suppress=True)
 from scipy import spatial
+import xarray as xr
 
 
 class MyNetCDF:
@@ -15,17 +16,11 @@ class MyNetCDF:
     def __init__(self, dset):
         self.dset = dset
 
-        self.x = dset.dimensions['x'].size
-        self.y = dset.dimensions['y'].size
-        try:
-            self.z = dset.dimensions['deptht'].size
-        except KeyError:
-            pass
 
     def coords_to_index(self, coords):
         """
         The idea is to make a table, where all the model grid points are stored in a following manner:
-        latitide - longitude - x index - y index And make query to this table
+        latitide - longitude - x index - y index, аnd make query to this table
         """
 
         try:
@@ -121,6 +116,9 @@ class MyNetCDF:
 
         return df
 
+    def to_dataset(self, variables):
+        xr.open_dataset()
+        return
 
 class Preprocessing:
 
