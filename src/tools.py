@@ -16,7 +16,6 @@ class MyNetCDF:
     def __init__(self, dset):
         self.dset = dset
 
-
     def coords_to_index(self, coords):
         """
         The idea is to make a table, where all the model grid points are stored in a following manner:
