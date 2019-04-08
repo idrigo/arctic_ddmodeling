@@ -4,13 +4,13 @@ import pandas as pd
 import numpy as np
 from scipy import spatial
 
-import warnings
-
 
 class MyNetCDF:
     """
-    TODO: implement xarray
-    Some instruments to work with NetCDF files
+    Class for handling general netcdf data
+    Currently all the methods are used for time-series single-point data
+    TODO – change classes in order to distinguish single-point and multi-point approach
+    TODO - to make a constructor class and to inherit other classes from it
     """
 
     def __init__(self, path):
@@ -63,11 +63,10 @@ class MyNetCDF:
 
         return idxs, true_coords
 
-
-class NemoNC(MyNetCDF):
-
     def extract_point(self, x, y, time, variables, z=0):
-
+        """
+        Extracting a single point from dataset
+        """
         out_list = []
         for var in variables:
             data = self.dset.variables[var]
@@ -81,15 +80,14 @@ class NemoNC(MyNetCDF):
         return out_list
 
     def file_time(self, time_step):
-
-        try:
-            tname = 'time'
-            nctime = self.dset.variables[tname][time_step]  # get values
-            t_unit = self.dset.variables[tname].units  # get unit
-        except KeyError:
-            tname = 'time'
-            nctime = self.dset.variables[tname][time_step]  # get values
-            t_unit = self.dset.variables[tname].units  # get unit
+        """
+        Converts timestep to datetime object
+        :param time_step: an int time step to convert
+        :return: formatted as '%Y%m%d' string
+        """
+        tname = 'time'
+        nctime = self.dset.variables[tname][time_step]  # get values
+        t_unit = self.dset.variables[tname].units  # get unit
 
         try:
             t_cal = self.dset.variables[tname].calendar
@@ -103,7 +101,7 @@ class NemoNC(MyNetCDF):
 
     def get_timeseries(self, lat, lon, variables):
         """
-        Method to get timeseries of time-distributed 4D datasets
+        Method to get timeseries of time-distributed 3D datasets
         :param lat: integer, latitude
         :param lon: integer, longitude
         :param variables: list of variables to extract
@@ -125,47 +123,81 @@ class NemoNC(MyNetCDF):
 
 
 class SatelliteNC(MyNetCDF):
+    """
+    TODO – change classes in order to distinguish single-point and multi-point approach
+    TODO – handle a multi-variable data
+    Child class to handle spatially-distributed multi-point data
+    """
 
     def __init__(self, path, variable=None):
+        """
+        :param path: path to a .nc file
+        :param variable: a data variable (for example ice thickness)
+
+        """
         super().__init__(path)
         self.vector = None
 
         self.variable = variable
+        self.data = None
+
         if variable:
-            self.data = self.get_variable(variable)
+            self.set_variable()
 
-            self.mask()
-            self.data = np.ma.filled(self.data, np.nan)
-            self.to_1d()
+    def set_variable(self):
+        """
+        If a variable name provided, initialize data and vector variables
+        """
+        self.data = self.dset.variables[self.variable][:]  # extract data from nc dataset
 
-        self.dframe = None
-
-    def get_variable(self, varname):
-        self.data = self.dset.variables[varname][:]
-        return self.data
-
-    def to_1d(self):
-        self.vector = self.data.ravel()
+        self.mask()
+        self.data = np.ma.filled(self.data, np.nan)  # fill data with nan based on mask
+        self.vector = self.data.ravel()  # convert data to 1d and store in in vector attribute
 
     def mask(self):
-        try:
+        """
+        TODO - make it more universal
+        Generates a mask, based on 'status flag ' vatiable
+        :return: masked self.data attribute
+        """
+        # OSISAF case
+        if 'status_flag' in self.dset.variables.keys():
             mask = self.dset.variables['status_flag'][:]
             self.data = np.ma.masked_where(np.logical_or(mask == 100, mask == 101), self.data)
-        except KeyError:
-            warnings.warn('Mask was not set')
+        else:
+            pass
+
+    def timelist(self, tname='time'):
+        """
+        Generates array of datetime.datetime objects, based on dataset time variable
+        :param tname: name of a time variable
+        :return: array of datetime.datetime objects
+        """
+
+        t_unit = self.dset.variables[tname].units  # get unit
+
+        try:
+            t_cal = self.dset.variables[tname].calendar
+        except AttributeError:  # Attribute doesn't exist
+            t_cal = u"gregorian"  # or standard
+
+        try:
+            return netcdftime.num2date(self.dset.variables[tname][:],
+                                       units=t_unit,
+                                       calendar=t_cal)
+        except ValueError:
+            # TODO - fix it
+            raise Exception('no ''since'' in unit_string')
 
     def to_df(self):
-
-        tstep = np.indices(np.shape(self.data))[0].ravel()
-        time = map(self.file_time, tstep)
-        time = np.fromiter(time, dtype=np.int)
+        """
+        Generates a dataframe, using existing class attributes
+        :return: pandas dataframe with columns time, x, y, value
+        """
+        time = self.timelist()
+        time = np.repeat(time, (np.shape(self.data))[1] * np.shape(self.data)[2])
         df = pd.DataFrame({'time': time,
                            'x': np.indices(np.shape(self.data))[1].ravel(),
                            'y': np.indices(np.shape(self.data))[2].ravel(),
                            self.variable: self.vector})
         return df
-
-
-class Osisaf(MyNetCDF, SatelliteNC):
-    pass
-

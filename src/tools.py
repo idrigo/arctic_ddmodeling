@@ -2,7 +2,9 @@ import numpy as np
 import pandas as pd
 
 class Preprocessing:
-
+    """
+    Class to handle csv files, generated from netcdf
+    """
     def __init__(self, df=None):
         self.df = df
 
@@ -43,6 +45,3 @@ class Preprocessing:
 
     def velocity_module(self, x):  # simple function to convert UV velocity to velocity module
         return np.sqrt(x[0] ** 2 + x[1] ** 2)
-
-    def df_of_dir(self, path, template):
-        return
