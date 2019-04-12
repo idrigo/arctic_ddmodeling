@@ -21,14 +21,6 @@ class Fitter:
 
         self.method = None
 
-    def set_method(self, method):
-        from sklearn.linear_model import LinearRegression
-        self.method = {'linear': LinearRegression()
-                       }.get(method)
-
-        print('Method {} is set'.format(self.method))
-        return
-
     def define_target(self, target_var, feature_list):
         """
         Method to set train and target sets
@@ -67,7 +59,6 @@ class Fitter:
         self.prediction = pd.Series(data=predict,
                                     index=self.y_test.index,
                                     name='Prediction')
-        return
 
     def r2_score(self):
         from sklearn.metrics import r2_score
@@ -93,3 +84,10 @@ class Fitter:
         sns.lineplot(data=data,
                      dashes=False).set_title(title)
         return
+
+
+class LinearRegression(Fitter):
+    def __init__(self):
+        super().__init__()
+        from sklearn.linear_model import LinearRegression
+        self.method = LinearRegression()
