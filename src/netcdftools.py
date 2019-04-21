@@ -13,10 +13,18 @@ class MyNetCDF:
     TODO - to make a constructor class and to inherit other classes from it
     """
 
-    def __init__(self, path):
+    def __init__(self, path, variable=None):
 
         self.dset = self.open_netcdf(path)
         self.data = None
+
+        self.vector = None
+
+        self.variable = variable
+        self.data = None
+
+        if variable:
+            self.set_variable()
 
     def open_netcdf(self, path):
         return nc.Dataset(path)
@@ -120,29 +128,6 @@ class MyNetCDF:
         df.drop('Date', inplace=True, axis=1)
 
         return df
-
-
-class SatelliteNC(MyNetCDF):
-    """
-    TODO – change classes in order to distinguish single-point and multi-point approach
-    TODO – handle a multi-variable data
-    Child class to handle spatially-distributed multi-point data
-    """
-
-    def __init__(self, path, variable=None):
-        """
-        :param path: path to a .nc file
-        :param variable: a data variable (for example ice thickness)
-
-        """
-        super().__init__(path)
-        self.vector = None
-
-        self.variable = variable
-        self.data = None
-
-        if variable:
-            self.set_variable()
 
     def set_variable(self):
         """
