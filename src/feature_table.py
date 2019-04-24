@@ -1,14 +1,19 @@
 import numpy as np
 import cfg
+
 try:
     from src.netcdftools import MyNetCDF  # for classical usage
 except:
-    from netcdftools import MyNetCDF # for Jupyter Notebook
+    from netcdftools import MyNetCDF  # for Jupyter Notebook
 
 
 class FeatureTable:
+    """
+    A class to create and handle feature tables –
+    """
 
-    def __init__(self, data, x, y, t=0, dx=0, dy=0, dt=0):
+    # TODO throw error if x or y not defined
+    def __init__(self, x=None, y=None, data=None, t=0, dx=0, dy=0, dt=0):
 
         self.data = data
         self.selection = None
@@ -23,7 +28,6 @@ class FeatureTable:
     def field_idx(self):
 
         deltas = [self.dt, self.dx, self.dy]
-        assert len(self.point) == len(deltas), 'coordinates and deltas should be same lenght'
         d = []
         for i, c in enumerate(self.point):
             start = c - deltas[i]
@@ -44,11 +48,15 @@ class FeatureTable:
         idx = idx[(idx[:, 0] >= 0) & (idx[:, 0] < datashape[0])
                   & (idx[:, 1] >= 0) & (idx[:, 1] < datashape[1])
                   & (idx[:, 2] >= 0) & (idx[:, 2] < datashape[2])]
+        '''
+        idx = idx[(idx[:, 1] >= 0) & (idx[:, 1] < datashape[1])
+                  & (idx[:, 2] >= 0) & (idx[:, 2] < datashape[2])]
+        '''
         return idx
 
     def select(self):
         selection = []
-        indexes = self.field_idx
+        indexes = self.field_idx()
 
         for i, val in enumerate(indexes):
             ix = tuple(indexes[i])
@@ -57,13 +65,20 @@ class FeatureTable:
         self.selection = np.array(selection)
         return self.selection
 
-    def gen_matrix(self):
+    def gen_matrix(self, data=None, x=None, y=None):
+
+        if x or y is not None:
+            self.point[1] = x
+            self.point[2] = y
+
+        if data is not None:
+            self.data = data
+
         matrix = []
+        # TODO: do smth if rows are not equal length (for time and bounds)
         for i in range(np.shape(self.data)[0]):
             self.point[0] = i
             selection = self.select()
             matrix.append(selection)
-
         self.matrix = np.array(matrix)
-
         return self.matrix
