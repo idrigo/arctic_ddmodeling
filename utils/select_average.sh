@@ -24,7 +24,7 @@ for year in $(seq 2010 2015); do
         #cdo daymean ${tmpdir}/tmp.nc ${output}/ice_grid_TUV_y${year}.nc
 
 
-        cdo -sellevidx,1 -daymean ${i} ${tmpdir}/${count}.nc
+        cdo -P 16 -sellevidx,1 -daymean ${i} ${tmpdir}/${count}.nc
         (( count++ ))
 
     done

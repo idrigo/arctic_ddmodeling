@@ -4,6 +4,7 @@ import netCDF4 as nc
 import numpy as np
 
 import cfg
+import tools
 
 
 class DataLoader:
@@ -20,7 +21,6 @@ class DataLoader:
 
         try:
             self.data = np.load(path)
-            print('Loaded {} from pickle'.format(variable))
             return self.data
         except FileNotFoundError:
 
@@ -47,11 +47,10 @@ class DataLoader:
 
             self.data = data
             np.save(path, data)
-            print('Loaded {} from NetCDF & saved as pickle'.format(variable))
             return self.data
 
 
-def load_features(X_vars, y_var, years, point, feature_table):
+def load_features(X_vars, y_var, years, point, feature_table, clean=True):
     """
     :param X_vars: list of feature variables
     :param y_var: target variable
@@ -76,13 +75,15 @@ def load_features(X_vars, y_var, years, point, feature_table):
             y_vec = data[:, point[0], point[1]]
         else:
             X_var = feature_table.gen_matrix(data=data, x=point[0], y=point[1])
+            print(np.shape(X_var))
             X.append(X_var)
 
     X = np.hstack([*X])
+    #X = tools.numpy_fillna(X[0])
     m = np.column_stack([y_vec, X])
-    m_n = m[~np.isnan(m).any(axis=1)]
-    y_out = m_n[:, 0]
-    X_out = m_n[:, 1:]
+    if clean:
+        m = m[~np.isnan(m).any(axis=1)]
+    y_out = m[:, 0]
+    X_out = m[:, 1:]
 
     return y_out, X_out
-
