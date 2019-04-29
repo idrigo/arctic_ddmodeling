@@ -11,5 +11,5 @@ for i in ${data}/*; do
     mkdir -p ${output}
 
 
-    cdo daymean ${i} ${output}/${name}
+    cdo -P 16 daymean ${i} ${output}/${name}
 done

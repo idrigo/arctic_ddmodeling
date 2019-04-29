@@ -13,7 +13,7 @@ class FeatureTable:
     """
 
     # TODO throw error if x or y not defined
-    def __init__(self, x=None, y=None, data=None, t=0, dx=0, dy=0, dt=0):
+    def __init__(self, x=None, y=None, data=None, t=0, dx=0, dy=0, dt=0, autoreg=None):
 
         self.data = data
         self.selection = None
@@ -24,14 +24,16 @@ class FeatureTable:
         self.dt = dt
 
         self.matrix = None
+        self.autoreg = autoreg
 
     def field_idx(self):
 
         deltas = [self.dt, self.dx, self.dy]
         d = []
-        for i, c in enumerate(self.point):
-            start = c - deltas[i]
-            stop = c + deltas[i] + 1
+
+        for i in range(3):
+            start = self.point[i] - deltas[i]
+            stop = self.point[i] + deltas[i] + 1
             l = list(range(start, stop))
             d.append(l)
 
@@ -65,7 +67,9 @@ class FeatureTable:
         self.selection = np.array(selection)
         return self.selection
 
-    def gen_matrix(self, data=None, x=None, y=None):
+    def gen_matrix(self, data=None, x=None, y=None, autoreg=None):
+        if autoreg is not None:
+            self.autoreg = autoreg
 
         if x or y is not None:
             self.point[1] = x
@@ -94,8 +98,10 @@ def numpy_fillna(data):
     mask = np.arange(lens.max()) < lens[:, None]
 
     # Setup output array and put elements from data into masked positions
-    out = np.zeros(mask.shape, dtype=data.dtype)
+    out = np.zeros(mask.shape, dtype=np.float)
     out[:] = np.nan
     out[mask] = np.concatenate(data)
 
-    return np.array(out, dtype=np.float)
+    return out
+
+

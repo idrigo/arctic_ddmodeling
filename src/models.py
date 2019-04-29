@@ -85,9 +85,3 @@ class Fitter:
                      dashes=False).set_title(title)
         return
 
-
-class LinearRegression(Fitter):
-    def __init__(self):
-        super().__init__()
-        from sklearn.linear_model import LinearRegression
-        self.method = LinearRegression()
