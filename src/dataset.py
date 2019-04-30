@@ -41,7 +41,7 @@ def load(variable, year):
         return data
 
 
-def load_features(X_vars, y_var, years, point, feature_table, autoreg=False):
+def load_features(X_vars, y_var, years, point, feature_table, autoreg=False, silent=False):
     """
     :param X_vars: list of feature variables
     :param y_var: target variable
@@ -55,10 +55,12 @@ def load_features(X_vars, y_var, years, point, feature_table, autoreg=False):
     if y_var not in X_vars:
         X_vars.append(y_var)
     for var in X_vars:
-        print("Loading {}".format(var))
+        if not silent:
+            print("Loading {}".format(var))
         data = None
         for year in years:
             to_append = load(year=year, variable=var)
+
             try:
                 data = np.append(data, to_append, axis=0)
             except:
@@ -79,6 +81,24 @@ def load_features(X_vars, y_var, years, point, feature_table, autoreg=False):
     if autoreg:
         X = np.column_stack([X, Y])
 
-
-    print("Total features {}, X size {}".format(n, np.shape(X)))
+    if not silent:
+        print("Total features {}, X size {}".format(n, np.shape(X)))
     return y_vec, X
+
+
+def clean_data(X, y):
+    m = np.column_stack([y, X])
+    m = m[~np.isnan(m).any(axis=1)]
+    return m[:,0], m[:,1:]
+
+def load_variable_years(variable, years, point=None):
+    data = []
+    for year in years:
+        d = load(year=year, variable=variable)
+        if point:
+            data.append(d[:, point[0], point[1]])
+        else:
+            data.append(d)
+    out_data=np.concatenate([*data])
+    return out_data
+

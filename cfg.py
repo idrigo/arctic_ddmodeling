@@ -4,6 +4,10 @@ var_dict = [{'variable': 'Thickness',  # sattelite
              'path': '/home/hpc-rosneft/nfs/0_42/share_rosneft/input_data/NEMO/14km/ice-restoring/',
              'file_mask': 'ice_thick_y{}.nc'},
 
+            {'variable': 'thick_cr2smos',  # sattelite
+             'path': '/home/hpc-rosneft/nfs/0_42/share_rosneft/output_yearly/',
+             'file_mask': 'ice-thick-cr2smos-{}.nc'},
+
             {'variable': 'ice_conc',  # sattelite ice concecteation
              'path': '/home/hpc-rosneft/nfs/0_42/share_rosneft/input_data/NEMO/14km/ice-restoring/',
              'file_mask': 'conc_y{}.nc'},
