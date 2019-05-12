@@ -106,6 +106,8 @@ def regress(X, y, X_test, y_test, model):
     pred_out[~mask] = np.nan
     pred_out[pred_out < 0] = 0
     y_pred_c, y_test_c = clean_data(pred_out, y_test)
-    mse_val = np.sqrt(mse(y_pred=y_pred_c, y_true=y_test_c))  # actually it is RMSE value
-
+    try:
+        mse_val = np.sqrt(mse(y_pred=y_pred_c, y_true=y_test_c))  # actually it is RMSE value
+    except ValueError:
+        mse_val = -9999
     return mse_val, pred_out
