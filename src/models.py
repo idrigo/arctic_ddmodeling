@@ -1,6 +1,11 @@
 import pandas as pd
 import numpy as np
 
+try:
+    from src.dataset import clean_data  # for classical usage
+except:
+    from dataset import clean_data
+from sklearn.metrics import mean_squared_error as mse
 
 class Fitter:
 
@@ -86,8 +91,23 @@ class Fitter:
         return
 
 
-class LinearRegression(Fitter):
-    def __init__(self):
-        super().__init__()
-        from sklearn.linear_model import LinearRegression
-        self.method = LinearRegression()
+def regress(X, y, X_test, y_test, model):
+    # todo - make a class
+    reg = model
+    y_c, X_c = clean_data(X, y)
+    reg.fit(X=X_c, y=y_c)
+
+    mask = ~np.isnan(X_test).any(axis=1)
+    pred = reg.predict(X_test[mask])
+    # idx = np.argwhere(mask).ravel()
+
+    pred_out = np.empty_like(y_test)
+    pred_out[mask] = pred
+    pred_out[~mask] = np.nan
+    pred_out[pred_out < 0] = 0
+    y_pred_c, y_test_c = clean_data(pred_out, y_test)
+    try:
+        mse_val = np.sqrt(mse(y_pred=y_pred_c, y_true=y_test_c))  # actually it is RMSE value
+    except ValueError:
+        mse_val = -9999
+    return mse_val, pred_out

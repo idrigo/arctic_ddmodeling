@@ -7,7 +7,4 @@ data/.DS_Store
 testdata/*
 data/*
 .DS_Store
-preprocess.ipynb
 src/.ipynb_checkpoints/*
-preprocess.ipynb
-*.ipynb
