@@ -4,7 +4,6 @@ import warnings
 
 warnings.filterwarnings('ignore')
 
-import multiprocessing
 from multiprocessing import Pool
 from timeit import default_timer as timer
 from itertools import product
@@ -15,16 +14,8 @@ from src.dataset import load_features, load, load_variable_years
 from src.models import regress
 
 
-
-'''
-    for i in tqdm(range(box[0], box[1], 1)):
-        for j in tqdm(range(box[2], box[3], 1)):
-            point = (i, j)
-
-            out[:, i, j] = predict(point)
-'''
-
-def predict(point):
+def predict(i,j):
+    point = (i,j)
     y_train = y_arr_train[:, point[0], point[1]]
     y_test = y_arr_test[:, point[0], point[1]]
 
@@ -49,23 +40,20 @@ def predict(point):
     return pred
 
 
-def parallel_process(i, j):
-    #t, i, j = np.unravel_index(i, dims)
-    point = [i, j]
+def idx(i, j):
+    return [i, j]
 
-    return predict(point)
 
-def idx(i,j):
-    return [i,j]
 if __name__ == '__main__':
     # configuration
-    global cfg
     cfg = dict(years_train=list(range(2010, 2012)),
                years_test=[2014, 2015],
                X_vars=['ice_conc', 'tair'],
                y_var='thick_cr2smos',
                ft=FeatureTable(dx=2, dy=2, dt=2),
-               model=Lasso(alpha=0.1, max_iter=10000))
+               model=Lasso(alpha=0.1, max_iter=10000),
+               boundaries=[0, 200, 0, 200]  # N-S-W-E
+               )
 
     dims = np.shape(load_variable_years(cfg['y_var'], cfg['years_test']))
 
@@ -75,9 +63,8 @@ if __name__ == '__main__':
     y_arr_train, X_arr_train = load_features(cfg['y_var'], cfg['X_vars'], cfg['years_train'])
     y_arr_test, X_arr_test = load_features(cfg['y_var'], cfg['X_vars'], cfg['years_test'])
 
-    #box=[200,250,150,200]
-    #i = range(box[0], box[1], 1)
-    #j = range(box[2], box[3], 1)
+    # i = range(box[0], box[1], 1)
+    # j = range(box[2], box[3], 1)
 
     i = range(dims[1])
     j = range(dims[2])
@@ -86,11 +73,9 @@ if __name__ == '__main__':
 
     start = timer()
     with Pool(64) as pool:
-        res = pool.starmap(parallel_process, out_flat, 1)
-        #idx = pool.starmap(idx, out_flat)
+        res = pool.starmap(predict, out_flat, 1)
+        # idx = pool.starmap(idx, out_flat)
     np.save('res.npy', res)
-    #np.save('idx.npy', idx)
+    # np.save('idx.npy', idx)
     end = timer()
-    print('Time = ', end-start)
-
-
+    print('Time = ', end - start)

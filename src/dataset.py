@@ -41,16 +41,14 @@ def load(variable, year):
         return data
 
 
-def load_features(y_var, X_vars, years):
+def load_features(y_var, X_vars, years, point=None):
     X_arr = []
     for var in X_vars:
-
-        to_append = load_variable_years(var, years)
+        to_append = load_variable_years(var, years, point)
         X_arr.append(to_append)
 
     y_arr = load_variable_years(y_var, years)
     return y_arr, X_arr
-
 
 
 def load_variable_years(variable, years, point=None):
