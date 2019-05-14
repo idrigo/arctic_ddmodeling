@@ -1,10 +1,6 @@
 import pandas as pd
 import numpy as np
 
-try:
-    from src.dataset import clean_data  # for classical usage
-except:
-    from dataset import clean_data
 from sklearn.metrics import mean_squared_error as mse
 
 class Fitter:
@@ -91,7 +87,13 @@ class Fitter:
         return
 
 
-def regress(X, y, X_test, y_test, model):
+def clean_data(X, y):
+    m = np.column_stack([y, X])
+    m = m[~np.isnan(m).any(axis=1)]
+    return m[:,0], m[:,1:]
+
+
+def regress(X, y, X_test, y_test, model, mse_calc = False):
     # todo - make a class
     reg = model
     y_c, X_c = clean_data(X, y)

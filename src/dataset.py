@@ -41,55 +41,17 @@ def load(variable, year):
         return data
 
 
-def load_features(X_vars, y_var, years, point, feature_table, autoreg=False, silent=False):
-    """
-    :param X_vars: list of feature variables
-    :param y_var: target variable
-    :param years: range of years
-    :param point: tuple or list of (x,y) point coordinates
-    :param feature_table: an instance of a FeatureTable class with given dx,dy,dt parameters
-    :return:
-    """
-    X = []
-    n = 0
-    if y_var not in X_vars:
-        X_vars.append(y_var)
+def load_features(y_var, X_vars, years):
+    X_arr = []
     for var in X_vars:
-        if not silent:
-            print("Loading {}".format(var))
-        data = None
-        for year in years:
-            to_append = load(year=year, variable=var)
 
-            try:
-                data = np.append(data, to_append, axis=0)
-            except:
-                data = to_append
+        to_append = load_variable_years(var, years)
+        X_arr.append(to_append)
 
-        if var == y_var:
-            y_vec = data[:, point[0], point[1]]
-            if autoreg:
-                # TODO – smth wrong
-                Y = feature_table.gen_matrix(data=data, x=point[0], y=point[1], autoreg=False)
-        else:
-            X_var = feature_table.gen_matrix(data=data, x=point[0], y=point[1])
-            X.append(X_var)
-            n += 1
-
-    X = np.hstack([*X])
-
-    if autoreg:
-        X = np.column_stack([X, Y])
-
-    if not silent:
-        print("Total features {}, X size {}".format(n, np.shape(X)))
-    return y_vec, X
+    y_arr = load_variable_years(y_var, years)
+    return y_arr, X_arr
 
 
-def clean_data(X, y):
-    m = np.column_stack([y, X])
-    m = m[~np.isnan(m).any(axis=1)]
-    return m[:,0], m[:,1:]
 
 def load_variable_years(variable, years, point=None):
     data = []
@@ -99,6 +61,5 @@ def load_variable_years(variable, years, point=None):
             data.append(d[:, point[0], point[1]])
         else:
             data.append(d)
-    out_data=np.concatenate([*data])
+    out_data = np.concatenate([*data])
     return out_data
-

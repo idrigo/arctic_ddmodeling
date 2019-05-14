@@ -39,6 +39,7 @@ class FeatureTable:
 
         mesh = np.meshgrid(*d)
         out = []
+
         for arr in mesh:
             out.append(arr.ravel())
 
@@ -50,21 +51,17 @@ class FeatureTable:
         idx = idx[(idx[:, 0] >= 0) & (idx[:, 0] < datashape[0])
                   & (idx[:, 1] >= 0) & (idx[:, 1] < datashape[1])
                   & (idx[:, 2] >= 0) & (idx[:, 2] < datashape[2])]
-        '''
-        idx = idx[(idx[:, 1] >= 0) & (idx[:, 1] < datashape[1])
-                  & (idx[:, 2] >= 0) & (idx[:, 2] < datashape[2])]
-        '''
+
         return idx
 
     def select(self):
-        selection = []
-        indexes = self.field_idx()
 
-        for i, val in enumerate(indexes):
-            ix = tuple(indexes[i])
-            selection.append(self.data[ix])
+        dims = np.shape(self.data)
+        indexes = np.array(self.field_idx())
 
-        self.selection = np.array(selection)
+        idx = np.ravel_multi_index([indexes[:,0], indexes[:,1], indexes[:,2]], dims)
+        self.selection = self.data.ravel()[idx]
+
         return self.selection
 
     def gen_matrix(self, data=None, x=None, y=None, autoreg=None):
