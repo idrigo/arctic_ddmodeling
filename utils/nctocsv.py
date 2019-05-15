@@ -9,7 +9,8 @@ from tqdm import tqdm
 
 import glob
 
-import cfg as cfg
+from src import cfg as cfg
+
 
 def coords_to_index(filename, coords):
     # The idea is to make a table, where all the model grid points are stored in a following manner:

@@ -1,5 +1,4 @@
 import numpy as np
-import cfg
 
 try:
     from src.netcdftools import MyNetCDF  # for classical usage

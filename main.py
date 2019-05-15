@@ -1,17 +1,31 @@
 import numpy as np
-import src.dataset as dset
-from src.feature_table import FeatureTable
 from sklearn.linear_model import Lasso
-from src.models import regress
+from datetime import timedelta
+import time
 
+try:
+    import src.dataset as dset
+    from src.feature_table import FeatureTable
+    from src.models import regress
+    import src.cfg as cfg
+
+except ModuleNotFoundError:
+    import sys
+    import os
+    #abspath = os.path.abspath(os.path.join(os.path.dirname(__file__), 'src'))
+    #sys.path.append('/home/hpc-rosneft/drigo/surrogate/src/')
+    import cfg
+    import dataset as dset
+    from feature_table import FeatureTable
+    from models import regress
 
 
 parameters = dict(years_train=list(range(2010, 2012)),
                   years_test=[2014, 2015],
                   X_vars=['ice_conc', 'tair'],
                   y_var='thick_cr2smos',
-                  boundaries=[0, 200, 0, 200],  # N-S-W-E
-                  parallelization=16)
+                  parallelization=16,
+                  )
 
 reg_params = dict(model=Lasso(alpha=0.1, max_iter=10000),
                   dx=2,
@@ -20,12 +34,33 @@ reg_params = dict(model=Lasso(alpha=0.1, max_iter=10000),
                   )
 
 
-
 class Main:
-    def __init__(self, parameters, reg_params):
+
+    def __init__(self, parameters=parameters, reg_params=reg_params, silent=False, log=False):
 
         self.par = parameters
         self.reg_params = reg_params
+
+        self.silent = silent
+        self.log = log
+        self.mask = np.load(cfg.mask_path)
+
+        self.y_arr_train = None
+        self.X_arr_train = None
+
+        self.y_arr_test = None
+        self.X_arr_test = None
+
+        self.ft = None
+        self.out = None
+
+        self.model = reg_params['model']
+
+        self.init_data()
+
+    def init_data(self):
+        if not self.silent:
+            print('Loading data...')
 
         self.y_arr_train, self.X_arr_train = dset.load_features(self.par['y_var'],
                                                                 self.par['X_vars'],
@@ -35,17 +70,15 @@ class Main:
                                                               self.par['X_vars'],
                                                               self.par['years_test'])
 
-        self.dimensions = np.shape(dset.load_variable_years(self.par['y_var'],
-                                                            self.par['years_test']))
-
         self.ft = FeatureTable(dx=reg_params['dx'],
                                dy=reg_params['dy'],
                                dt=reg_params['dt'])
-        self.model = reg_params['model']
-
-        out = np.empty(shape=self.dimensions)
+        out = np.empty_like(self.y_arr_test)
         out[:] = np.nan
         self.out = out
+        if not self.silent:
+            print('Data is loaded')
+
 
     def predict_point(self, point):
 
@@ -71,17 +104,95 @@ class Main:
 
         return pred
 
-    def predict_area(self):
-        from multiprocessing import Pool
-        from itertools import product
 
-        if self.par['parallelization']:
-            with Pool(64) as pool:
-                i = range(self.par['boundaries'][2], self.par['boundaries'][3])
-                j = range(self.par['boundaries'][0], self.par['boundaries'][1])
-                out_flat = list(product(i, j))
-                res = pool.starmap(self.predict_point, out_flat, 1)
-                #TODO processing of thi output (reshaping)
+    def predict_area(self, bounds, step):
+        from multiprocessing import Pool
+
+        indices = self.gen_indices(bounds, step)
+        start = time.time()
+        if self.par['parallelization'] > 1:
+            assert type(self.par['parallelization']) is int, 'Number of processes should be int type'
+
+            self.yell('Starting regression using {} cores'.format(self.par['parallelization']))
+            with Pool(self.par['parallelization']) as pool:
+                res = pool.starmap(self.predict_point, indices, 1)
+
+            '''
+            res = res.reshape(dims[1], dims[2], 730)
+            res = np.swapaxes(res, 2, 0)
+            np.save('res.npy', res)
+            '''
 
         else:
-            pass #TODO - serial implementation
+            self.yell('Starting regression on a single core')
+            res = []
+            for idx, val in enumerate(indices):
+                res.append(self.predict_point(val))
+
+        res = np.array(res)
+        result = self.restore_array(res, indices)
+        elapsed = (time.time() - start)
+
+        self.yell('Processed {} points in {}'.format(len(indices), str(timedelta(seconds=elapsed))))
+        return result
+
+    def gen_indices(self, bounds, step):
+        from itertools import product
+        i = range(bounds[0],
+                  bounds[1],
+                  step[0])
+
+        j = range(bounds[2],
+                  bounds[3],
+                  step[1])
+
+        indices = list(product(i, j))
+        return indices
+
+    def restore_array(self, array_in, indices):
+
+        self.yell('Constructing output array')
+        for idx, val in enumerate(indices):
+            (i, j) = indices[idx]
+            self.out[:, i, j] = array_in[idx]
+
+        return self.out
+
+    def post_process(self, array):
+        array[np.isnan(array)] = 0
+        array = np.ma.masked_array(array, mask=self.mask)
+        return array
+
+    def interpolation(self, data, method='nearest'):
+        from scipy import interpolate
+        self.yell('Interpolating data using {} method'.format(method))
+        assert len(np.shape(data)) == 3, 'Input array should be 3D'
+
+        x = np.arange(0, data.shape[2])
+        y = np.arange(0, data.shape[1])
+        xx, yy = np.meshgrid(x, y)
+
+        def interp2d(slice):
+            # mask invalid values
+            slice = np.ma.masked_invalid(slice)
+            # get only the valid values
+            x1 = xx[~slice.mask]
+            y1 = yy[~slice.mask]
+            newarr = slice[~slice.mask]
+            GD1 = interpolate.griddata((x1, y1), newarr.ravel(),
+                                       (xx, yy),
+                                       method=method)
+            return GD1
+
+        output = np.apply_along_axis(interp2d, 0, data)
+        return output
+
+    def logging(self):
+        # TODO - логгирование
+        return
+
+    def yell(self, message):
+        if not self.silent:
+            print(message)
+        else:
+            pass

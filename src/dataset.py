@@ -3,12 +3,14 @@ import os
 import netCDF4 as nc
 import numpy as np
 
-import cfg
-#from src.feature_table import FeatureTable
+try:
+    from src import cfg
+except:
+    import cfg
 
 
 def load(variable, year):
-    abspath = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'data', 'processed'))
+    abspath = cfg.processed_data_path
     path = '{}/{}_{}.npy'.format(abspath, variable, year)
 
     try:

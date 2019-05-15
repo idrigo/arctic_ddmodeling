@@ -74,7 +74,10 @@ if __name__ == '__main__':
     start = timer()
     with Pool(64) as pool:
         res = pool.starmap(predict, out_flat, 1)
-        # idx = pool.starmap(idx, out_flat)
+
+    res = np.array(res)
+    res = res.reshape(dims[1], dims[2], 730)
+    res = np.swapaxes(res, 2, 0)
     np.save('res.npy', res)
     # np.save('idx.npy', idx)
     end = timer()
