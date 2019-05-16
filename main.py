@@ -4,6 +4,8 @@ from datetime import timedelta
 import time
 from tqdm import tqdm
 
+from argparse import ArgumentParser
+
 try:
     import src.dataset as dset
     from src.feature_table import FeatureTable
@@ -22,7 +24,7 @@ except ModuleNotFoundError:
 
 parameters = dict(years_train=list(range(2010, 2012)),
                   years_test=[2014, 2015],
-                  X_vars=['ice_conc', 'tair'],
+                  X_vars=['ice_conc', 'tair','votemper'],
                   y_var='thick_cr2smos'
                   )
 
@@ -59,7 +61,7 @@ class Main:
 
     def init_data(self):
         """
-        Method to define class me
+        Method to define class arguments
         :return:
         """
         self.yell('Loading test and train data...')
@@ -82,9 +84,9 @@ class Main:
 
     def predict_point(self, point):
         """
-
-        :param point:
-        :return:
+        Method to fit a regression on one point, given as (t, x, y)
+        :param point: list or tuple of point coordinates (t, x, y)
+        :return: y vector of len (t) as a regression prediction
         """
         y_train = self.y_arr_train[:, point[0], point[1]]
         y_test = self.y_arr_test[:, point[0], point[1]]
@@ -115,6 +117,7 @@ class Main:
         start = time.time()
         self.yell('{} points'.format(len(indices)))
         if parallel:
+            # TODO - разобраться что тут не так
             assert type(parallel) is int, 'Number of processes should be int type'
 
             self.yell('Starting regression using {} cores'.format(parallel))
@@ -133,7 +136,6 @@ class Main:
             for idx, val in tqdm(enumerate(indices), total=len(indices)):
                 res.append(self.predict_point(val))
 
-        res = np.array(res)
         result = self.restore_array(res, indices)
         elapsed = (time.time() - start)
 
@@ -152,8 +154,9 @@ class Main:
                   bounds[3],
                   step[1])
 
-        indices = list(product(i, j))
-        return indices
+        idx = list(product(i, j))
+        idx[:] = [tup for tup in idx if self.mask[tup] == False]
+        return idx
 
     def restore_array(self, array_in, indices):
 
@@ -164,14 +167,22 @@ class Main:
 
         return self.out
 
-    def post_process(self, array):
+    def post_process(self, array = None):
+        if array is None:
+            array = self.out
+
         array[np.isnan(array)] = 0
-        array = np.ma.masked_array(array, mask=self.mask)
+        mask = np.repeat(self.mask[None, ...], array.shape[0], axis=0)
+        array = np.ma.masked_array(array, mask=mask)
+        self.out = array
         return array
 
-    def interpolation(self, data, method='nearest'):
+    def interpolate(self, data=None, method='nearest'):
+
         from scipy import interpolate
         self.yell('Interpolating data using {} method'.format(method))
+        if data is None:
+            data = self.out
         assert len(np.shape(data)) == 3, 'Input array should be 3D'
 
         x = np.arange(0, data.shape[2])
@@ -190,7 +201,14 @@ class Main:
                                        method=method)
             return GD1
 
-        output = np.apply_along_axis(interp2d, 0, data)
+        output = np.empty_like(data)
+        for i in tqdm(range(data.shape[0])):
+            try:
+                output[i, :, :] = interp2d(data[i, :, :])
+            except ValueError: # TODO - разобраться что не так
+                pass
+
+        self.out = output
         return output
 
     def logging(self):
@@ -203,11 +221,29 @@ class Main:
         else:
             pass
 
-    def save(self):
+    def save(self): # todo - доделать
+        self.yell('Saving results to file')
+        self.out.dump('res.npy')
         return
 
 
 if __name__ == '__main__':
+    parser = ArgumentParser()
+    parser.add_argument("-P","--processess", metavar='P', dest="parallel",
+                        help="number of processess", type=int, default=None)
+
+    parser.add_argument("-S", "--step", dest="step",
+                        help="", type=int, default=1)
+
+    parser.add_argument("-B", "--bounds", dest="bounds",
+                        help="number of processess", type=list, default=[0, 452, 0, 406])
+    args = parser.parse_args()
+
+    steps = [args.step]*2
+
     m = Main(parameters=parameters)
-    o = m.predict_area(bounds=[100, 200, 100, 200], step=[2, 2], parallel=None)
-    # np.save('res.npy', 0)
+    m.predict_area(bounds=[0, 400, 0, 400], step=steps, parallel=args.parallel)
+    m.interpolate()
+    m.post_process()
+    m.save()
+
