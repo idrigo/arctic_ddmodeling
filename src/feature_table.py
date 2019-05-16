@@ -12,60 +12,36 @@ class FeatureTable:
     """
 
     # TODO throw error if x or y not defined
-    def __init__(self, x=None, y=None, data=None, t=0, dx=0, dy=0, dt=0, autoreg=None):
+    def __init__(self, x=None, y=None, data=None, t=0, dx=0, dy=0, dt=0):
 
         self.data = data
-        self.selection = None
         self.point = [t, x, y]
 
-        self.dx = dx
-        self.dy = dy
-        self.dt = dt
+        self.deltas = [dt, dy, dx]
 
         self.matrix = None
-        self.autoreg = autoreg
-
-    def field_idx(self):
-
-        deltas = [self.dt, self.dx, self.dy]
-        d = []
-
-        for i in range(3):
-            start = self.point[i] - deltas[i]
-            stop = self.point[i] + deltas[i] + 1
-            l = list(range(start, stop))
-            d.append(l)
-
-        mesh = np.meshgrid(*d)
-        out = []
-
-        for arr in mesh:
-            out.append(arr.ravel())
-
-        idx = np.column_stack([*out])
-
-        datashape = np.shape(self.data)
-        # sel = (idx >= 0).all(axis=1)
-
-        idx = idx[(idx[:, 0] >= 0) & (idx[:, 0] < datashape[0])
-                  & (idx[:, 1] >= 0) & (idx[:, 1] < datashape[1])
-                  & (idx[:, 2] >= 0) & (idx[:, 2] < datashape[2])]
-
-        return idx
 
     def select(self):
+        data = self.data
+        deltas = self.deltas
+        point = self.point
 
-        dims = np.shape(self.data)
-        indexes = np.array(self.field_idx())
+        idx = [[point[0] - deltas[0], point[0] + deltas[0] + 1],
+               [point[1] - deltas[1], point[1] + deltas[1] + 1],
+               [point[2] - deltas[2], point[2] + deltas[2] + 1]]
+        idx = np.array(idx)
+        for i, val in enumerate(idx):
+            if val[1] > data.shape[i]:
+                val[1] = data.shape[i] - 1
 
-        idx = np.ravel_multi_index([indexes[:,0], indexes[:,1], indexes[:,2]], dims)
-        self.selection = self.data.ravel()[idx]
+        idx[idx < 0] = 0
+        output = data[idx[0, 0]:idx[0, 1],
+                 idx[1, 0]:idx[1, 1],
+                 idx[2, 0]:idx[2, 1]]
 
-        return self.selection
+        return output.ravel()
 
-    def gen_matrix(self, data=None, x=None, y=None, autoreg=None):
-        if autoreg is not None:
-            self.autoreg = autoreg
+    def gen_matrix(self, data=None, x=None, y=None):
 
         if x or y is not None:
             self.point[1] = x
@@ -99,5 +75,3 @@ def numpy_fillna(data):
     out[mask] = np.concatenate(data)
 
     return out
-
-

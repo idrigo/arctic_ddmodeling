@@ -2,6 +2,7 @@ import numpy as np
 from sklearn.linear_model import Lasso
 from datetime import timedelta
 import time
+from tqdm import tqdm
 
 try:
     import src.dataset as dset
@@ -12,19 +13,17 @@ try:
 except ModuleNotFoundError:
     import sys
     import os
-    #abspath = os.path.abspath(os.path.join(os.path.dirname(__file__), 'src'))
-    #sys.path.append('/home/hpc-rosneft/drigo/surrogate/src/')
+    # abspath = os.path.abspath(os.path.join(os.path.dirname(__file__), 'src'))
+    # sys.path.append('/home/hpc-rosneft/drigo/surrogate/src/')
     import cfg
     import dataset as dset
     from feature_table import FeatureTable
     from models import regress
 
-
 parameters = dict(years_train=list(range(2010, 2012)),
                   years_test=[2014, 2015],
                   X_vars=['ice_conc', 'tair'],
-                  y_var='thick_cr2smos',
-                  parallelization=16,
+                  y_var='thick_cr2smos'
                   )
 
 reg_params = dict(model=Lasso(alpha=0.1, max_iter=10000),
@@ -59,8 +58,11 @@ class Main:
         self.init_data()
 
     def init_data(self):
-        if not self.silent:
-            print('Loading data...')
+        """
+        Method to define class me
+        :return:
+        """
+        self.yell('Loading test and train data...')
 
         self.y_arr_train, self.X_arr_train = dset.load_features(self.par['y_var'],
                                                                 self.par['X_vars'],
@@ -76,12 +78,14 @@ class Main:
         out = np.empty_like(self.y_arr_test)
         out[:] = np.nan
         self.out = out
-        if not self.silent:
-            print('Data is loaded')
-
+        self.yell('Data is loaded')
 
     def predict_point(self, point):
+        """
 
+        :param point:
+        :return:
+        """
         y_train = self.y_arr_train[:, point[0], point[1]]
         y_test = self.y_arr_test[:, point[0], point[1]]
 
@@ -104,17 +108,17 @@ class Main:
 
         return pred
 
-
-    def predict_area(self, bounds, step):
+    def predict_area(self, bounds, step, parallel=None):
         from multiprocessing import Pool
 
         indices = self.gen_indices(bounds, step)
         start = time.time()
-        if self.par['parallelization'] > 1:
-            assert type(self.par['parallelization']) is int, 'Number of processes should be int type'
+        self.yell('{} points'.format(len(indices)))
+        if parallel:
+            assert type(parallel) is int, 'Number of processes should be int type'
 
-            self.yell('Starting regression using {} cores'.format(self.par['parallelization']))
-            with Pool(self.par['parallelization']) as pool:
+            self.yell('Starting regression using {} cores'.format(parallel))
+            with Pool(parallel) as pool:
                 res = pool.starmap(self.predict_point, indices, 1)
 
             '''
@@ -126,14 +130,16 @@ class Main:
         else:
             self.yell('Starting regression on a single core')
             res = []
-            for idx, val in enumerate(indices):
+            for idx, val in tqdm(enumerate(indices), total=len(indices)):
                 res.append(self.predict_point(val))
 
         res = np.array(res)
         result = self.restore_array(res, indices)
         elapsed = (time.time() - start)
 
-        self.yell('Processed {} points in {}'.format(len(indices), str(timedelta(seconds=elapsed))))
+        self.yell('Processed {} points in {} ({} points/sec)'.format(len(indices),
+                                                                     str(timedelta(seconds=elapsed)),
+                                                                     round(len(indices) / elapsed), 5))
         return result
 
     def gen_indices(self, bounds, step):
@@ -196,3 +202,12 @@ class Main:
             print(message)
         else:
             pass
+
+    def save(self):
+        return
+
+
+if __name__ == '__main__':
+    m = Main(parameters=parameters)
+    o = m.predict_area(bounds=[100, 200, 100, 200], step=[2, 2], parallel=None)
+    # np.save('res.npy', 0)
