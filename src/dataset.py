@@ -63,3 +63,41 @@ def load_variable_years(variable, years, point=None):
             data.append(d)
     out_data = np.concatenate([*data])
     return out_data
+
+
+def interpolate(data, method):
+    from scipy import interpolate
+    from tqdm import tqdm
+
+    assert len(np.shape(data)) == 3, 'Input array should be 3D'
+    x = np.arange(0, data.shape[2])
+    y = np.arange(0, data.shape[1])
+    xx, yy = np.meshgrid(x, y)
+
+    def interp2d(slice):
+        # mask invalid values
+        slice = np.ma.masked_invalid(slice)
+        # get only the valid values
+        x1 = xx[~slice.mask]
+        y1 = yy[~slice.mask]
+        newarr = slice[~slice.mask]
+        GD1 = interpolate.griddata((x1, y1), newarr.ravel(),
+                                   (xx, yy),
+                                   method=method)
+        return GD1
+
+    output = np.empty_like(data)
+    for i in tqdm(range(data.shape[0])):
+        try:
+            output[i, :, :] = interp2d(data[i, :, :])
+        except ValueError:  # TODO - разобраться что не так
+            pass
+
+    return output
+
+
+def mask3d(array, mask):
+    array[np.isnan(array)] = 0
+    mask = np.repeat(mask[None, ...], array.shape[0], axis=0)
+    array = np.ma.masked_array(array, mask=mask)
+    return  array

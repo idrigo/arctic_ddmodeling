@@ -1,9 +1,9 @@
 import numpy as np
 
-try:
-    from src.netcdftools import MyNetCDF  # for classical usage
-except:
-    from netcdftools import MyNetCDF  # for Jupyter Notebook
+#try:
+#    from src.netcdftools import MyNetCDF  # for classical usage
+#except:
+#    from netcdftools import MyNetCDF  # for Jupyter Notebook
 
 
 class FeatureTable:

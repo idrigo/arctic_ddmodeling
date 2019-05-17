@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 
+import os
 class Preprocessing:
     """
     Class to handle csv files, generated from netcdf
@@ -47,3 +48,58 @@ class Preprocessing:
         return np.sqrt(x[0] ** 2 + x[1] ** 2)
 
 
+class Logger:
+    def __init__(self, to_file=False, silent=False):
+        self.filename = None
+        path = os.path.abspath(os.path.join(os.path.dirname( __file__ ), '..', 'log.txt'))
+        self.logfile = path
+        self.silent = silent
+        self.to_file = to_file
+
+    def start(self, parameters, reg_parameters):
+
+        with open(self.logfile, 'a') as fo:
+            fo.write('-------------------------------------------------------------------------------\n')
+            fo.write(self.time)
+            fo.write('\n\nPARAMETERS \n')
+            for k, v in parameters.items():
+                fo.write(str(k) + ' : ' + str(v) + '\n')
+
+            fo.write('\n\nREGRESSION PARAMETERS \n')
+            for k, v in reg_parameters.items():
+                fo.write(str(k) + ' : ' + str(v) + '\n')
+
+    def info(self, message):
+        string = '{}\t{}'.format(self.time, message)
+        if not self.silent:
+            print(string)
+
+        if self.to_file:
+            with open(self.logfile, 'a') as f:
+                f.write(string+'\n')
+        return
+
+    def gen_filename(self):
+        return
+
+    @property
+    def time(self):
+        import datetime
+        time_now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        return time_now
+
+def parser(): # todo - доделать
+    from argparse import ArgumentParser
+    parser = ArgumentParser()
+    parser.add_argument("-P","--processess", metavar='P', dest="parallel",
+                        help="number of processess", type=int, default=None)
+
+    parser.add_argument("-S", "--step", dest="step",
+                        help="", type=int, default=1)
+
+    parser.add_argument("-B", "--bounds", dest="bounds",
+                        help="number of processess", type=list, default=[0, 452, 0, 406])
+    args = parser.parse_args()
+
+    args.step = [args.step] * 2
+    return args

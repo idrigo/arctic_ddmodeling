@@ -4,14 +4,12 @@ from datetime import timedelta
 import time
 from tqdm import tqdm
 
-from argparse import ArgumentParser
-
 try:
     import src.dataset as dset
     from src.feature_table import FeatureTable
     from src.models import regress
     import src.cfg as cfg
-
+    from src.tools import Logger, parser
 except ModuleNotFoundError:
     import sys
     import os
@@ -21,11 +19,14 @@ except ModuleNotFoundError:
     import dataset as dset
     from feature_table import FeatureTable
     from models import regress
+    from tools import Logger, parser
 
 parameters = dict(years_train=list(range(2010, 2012)),
                   years_test=[2014, 2015],
-                  X_vars=['ice_conc', 'tair','votemper'],
-                  y_var='thick_cr2smos'
+                  X_vars=['ice_conc', 'tair', 'votemper'],
+                  y_var='thick_cr2smos',
+                  bounds=[0, 400, 0, 400],
+                  step=[1, 1]
                   )
 
 reg_params = dict(model=Lasso(alpha=0.1, max_iter=10000),
@@ -34,16 +35,13 @@ reg_params = dict(model=Lasso(alpha=0.1, max_iter=10000),
                   dt=2
                   )
 
-
 class Main:
 
-    def __init__(self, parameters=parameters, reg_params=reg_params, silent=False, log=False):
+    def __init__(self, parameters=parameters, reg_params=reg_params):
 
         self.par = parameters
         self.reg_params = reg_params
 
-        self.silent = silent
-        self.log = log
         self.mask = np.load(cfg.mask_path)
 
         self.y_arr_train = None
@@ -55,16 +53,15 @@ class Main:
         self.ft = None
         self.out = None
 
-        self.model = reg_params['model']
-
         self.init_data()
+        log.start(parameters, reg_params)
 
     def init_data(self):
         """
         Method to define class arguments
         :return:
         """
-        self.yell('Loading test and train data...')
+        log.info('Loading test and train data...')
 
         self.y_arr_train, self.X_arr_train = dset.load_features(self.par['y_var'],
                                                                 self.par['X_vars'],
@@ -74,13 +71,13 @@ class Main:
                                                               self.par['X_vars'],
                                                               self.par['years_test'])
 
-        self.ft = FeatureTable(dx=reg_params['dx'],
-                               dy=reg_params['dy'],
-                               dt=reg_params['dt'])
+        self.ft = FeatureTable(dx=self.reg_params['dx'],
+                               dy=self.reg_params['dy'],
+                               dt=self.reg_params['dt'])
         out = np.empty_like(self.y_arr_test)
         out[:] = np.nan
         self.out = out
-        self.yell('Data is loaded')
+        log.info('Data is loaded')
 
     def predict_point(self, point):
         """
@@ -103,24 +100,28 @@ class Main:
         X_test = np.hstack([*X_test])
 
         if np.count_nonzero(~np.isnan(y_train)) == 0:
-            pred = np.empty_like(y_train)
+            pred = np.empty_like(y_test)
             pred[:] = np.nan
         else:
-            mse_val, pred = regress(X_train, y_train, X_test, y_test, model=reg_params['model'])
+            mse_val, pred = regress(X_train, y_train, X_test, y_test, model=self.reg_params['model'])
 
         return pred
 
-    def predict_area(self, bounds, step, parallel=None):
-        from multiprocessing import Pool
+    def predict_area(self, bounds=None, step=None, parallel=None):
+
+        if bounds is None: bounds = self.par['bounds']
+
+        if step is None: step = self.par['step']
 
         indices = self.gen_indices(bounds, step)
         start = time.time()
-        self.yell('{} points'.format(len(indices)))
+        log.info('{} points'.format(len(indices)))
         if parallel:
+            from multiprocessing import Pool
             # TODO - разобраться что тут не так
             assert type(parallel) is int, 'Number of processes should be int type'
 
-            self.yell('Starting regression using {} cores'.format(parallel))
+            log.info('Starting regression using {} cores'.format(parallel))
             with Pool(parallel) as pool:
                 res = pool.starmap(self.predict_point, indices, 1)
 
@@ -131,17 +132,17 @@ class Main:
             '''
 
         else:
-            self.yell('Starting regression on a single core')
+            log.info('Starting regression on a single core')
             res = []
-            for idx, val in tqdm(enumerate(indices), total=len(indices)):
-                res.append(self.predict_point(val))
+            for idx, point in tqdm(enumerate(indices), total=len(indices)):
+                res.append(self.predict_point(point))
 
         result = self.restore_array(res, indices)
         elapsed = (time.time() - start)
 
-        self.yell('Processed {} points in {} ({} points/sec)'.format(len(indices),
-                                                                     str(timedelta(seconds=elapsed)),
-                                                                     round(len(indices) / elapsed), 5))
+        log.info('Processed {} points in {} ({} points/sec)'.format(len(indices),
+                                                                    str(timedelta(seconds=elapsed)),
+                                                                    round(len(indices) / elapsed), 5))
         return result
 
     def gen_indices(self, bounds, step):
@@ -160,90 +161,60 @@ class Main:
 
     def restore_array(self, array_in, indices):
 
-        self.yell('Constructing output array')
+        log.info('Constructing output array')
         for idx, val in enumerate(indices):
             (i, j) = indices[idx]
             self.out[:, i, j] = array_in[idx]
 
         return self.out
 
-    def post_process(self, array = None):
+    def apply_mask(self, array=None):
         if array is None:
             array = self.out
 
-        array[np.isnan(array)] = 0
-        mask = np.repeat(self.mask[None, ...], array.shape[0], axis=0)
-        array = np.ma.masked_array(array, mask=mask)
-        self.out = array
-        return array
+        self.out = dset.mask3d(array=array, mask=self.mask)
+        return self.out
 
     def interpolate(self, data=None, method='nearest'):
 
-        from scipy import interpolate
-        self.yell('Interpolating data using {} method'.format(method))
+        log.info('Interpolating data using {} method'.format(method))
         if data is None:
             data = self.out
-        assert len(np.shape(data)) == 3, 'Input array should be 3D'
 
-        x = np.arange(0, data.shape[2])
-        y = np.arange(0, data.shape[1])
-        xx, yy = np.meshgrid(x, y)
+        self.out = dset.interpolate(data=data, method=method)
+        return self.out
 
-        def interp2d(slice):
-            # mask invalid values
-            slice = np.ma.masked_invalid(slice)
-            # get only the valid values
-            x1 = xx[~slice.mask]
-            y1 = yy[~slice.mask]
-            newarr = slice[~slice.mask]
-            GD1 = interpolate.griddata((x1, y1), newarr.ravel(),
-                                       (xx, yy),
-                                       method=method)
-            return GD1
-
-        output = np.empty_like(data)
-        for i in tqdm(range(data.shape[0])):
-            try:
-                output[i, :, :] = interp2d(data[i, :, :])
-            except ValueError: # TODO - разобраться что не так
-                pass
-
-        self.out = output
-        return output
-
-    def logging(self):
-        # TODO - логгирование
-        return
-
-    def yell(self, message):
-        if not self.silent:
-            print(message)
-        else:
-            pass
-
-    def save(self): # todo - доделать
-        self.yell('Saving results to file')
-        self.out.dump('res.npy')
-        return
+    def save(self):  # todo - доделать
+        import datetime
+        time_now = datetime.datetime.now().strftime("%m%d_%H%M")
+        log.info('Saving results to file')
+        fname = 'res_{}.npy'.format(time_now)
+        fname=os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'data', 'results', fname))
+        self.out.dump(fname)
+        log.info('Results were written to file {}'.format(fname))
 
 
 if __name__ == '__main__':
-    parser = ArgumentParser()
-    parser.add_argument("-P","--processess", metavar='P', dest="parallel",
-                        help="number of processess", type=int, default=None)
 
-    parser.add_argument("-S", "--step", dest="step",
-                        help="", type=int, default=1)
+    args = parser()
+    log = Logger(to_file=True, silent=False)
 
-    parser.add_argument("-B", "--bounds", dest="bounds",
-                        help="number of processess", type=list, default=[0, 452, 0, 406])
-    args = parser.parse_args()
+    parameters = dict(years_train=list(range(2010, 2014)),
+                      years_test=[2014, 2015],
+                      X_vars=['ice_conc', 'tair', 'votemper'],
+                      y_var='thick_cr2smos',
+                      bounds=[0, 400, 0, 400],
+                      step=[20, 20]
+                      )
 
-    steps = [args.step]*2
+    reg_params = dict(model=Lasso(alpha=0.1, max_iter=10000),
+                      dx=2,
+                      dy=2,
+                      dt=2
+                      )
 
-    m = Main(parameters=parameters)
-    m.predict_area(bounds=[0, 400, 0, 400], step=steps, parallel=args.parallel)
+    m = Main(parameters=parameters, reg_params=reg_params)
+    m.predict_area()
     m.interpolate()
-    m.post_process()
+    m.apply_mask()
     m.save()
-
