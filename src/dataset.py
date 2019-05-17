@@ -3,12 +3,14 @@ import os
 import netCDF4 as nc
 import numpy as np
 
-import cfg
-#from src.feature_table import FeatureTable
+try:
+    from src import cfg
+except:
+    import cfg
 
 
 def load(variable, year):
-    abspath = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'data', 'processed'))
+    abspath = cfg.processed_data_path
     path = '{}/{}_{}.npy'.format(abspath, variable, year)
 
     try:
@@ -41,55 +43,15 @@ def load(variable, year):
         return data
 
 
-def load_features(X_vars, y_var, years, point, feature_table, autoreg=False, silent=False):
-    """
-    :param X_vars: list of feature variables
-    :param y_var: target variable
-    :param years: range of years
-    :param point: tuple or list of (x,y) point coordinates
-    :param feature_table: an instance of a FeatureTable class with given dx,dy,dt parameters
-    :return:
-    """
-    X = []
-    n = 0
-    if y_var not in X_vars:
-        X_vars.append(y_var)
+def load_features(y_var, X_vars, years, point=None):
+    X_arr = []
     for var in X_vars:
-        if not silent:
-            print("Loading {}".format(var))
-        data = None
-        for year in years:
-            to_append = load(year=year, variable=var)
+        to_append = load_variable_years(var, years, point)
+        X_arr.append(to_append)
 
-            try:
-                data = np.append(data, to_append, axis=0)
-            except:
-                data = to_append
+    y_arr = load_variable_years(y_var, years)
+    return y_arr, X_arr
 
-        if var == y_var:
-            y_vec = data[:, point[0], point[1]]
-            if autoreg:
-                # TODO – smth wrong
-                Y = feature_table.gen_matrix(data=data, x=point[0], y=point[1], autoreg=False)
-        else:
-            X_var = feature_table.gen_matrix(data=data, x=point[0], y=point[1])
-            X.append(X_var)
-            n += 1
-
-    X = np.hstack([*X])
-
-    if autoreg:
-        X = np.column_stack([X, Y])
-
-    if not silent:
-        print("Total features {}, X size {}".format(n, np.shape(X)))
-    return y_vec, X
-
-
-def clean_data(X, y):
-    m = np.column_stack([y, X])
-    m = m[~np.isnan(m).any(axis=1)]
-    return m[:,0], m[:,1:]
 
 def load_variable_years(variable, years, point=None):
     data = []
@@ -99,6 +61,43 @@ def load_variable_years(variable, years, point=None):
             data.append(d[:, point[0], point[1]])
         else:
             data.append(d)
-    out_data=np.concatenate([*data])
+    out_data = np.concatenate([*data])
     return out_data
 
+
+def interpolate(data, method):
+    from scipy import interpolate
+    from tqdm import tqdm
+
+    assert len(np.shape(data)) == 3, 'Input array should be 3D'
+    x = np.arange(0, data.shape[2])
+    y = np.arange(0, data.shape[1])
+    xx, yy = np.meshgrid(x, y)
+
+    def interp2d(slice):
+        # mask invalid values
+        slice = np.ma.masked_invalid(slice)
+        # get only the valid values
+        x1 = xx[~slice.mask]
+        y1 = yy[~slice.mask]
+        newarr = slice[~slice.mask]
+        GD1 = interpolate.griddata((x1, y1), newarr.ravel(),
+                                   (xx, yy),
+                                   method=method)
+        return GD1
+
+    output = np.empty_like(data)
+    for i in tqdm(range(data.shape[0])):
+        try:
+            output[i, :, :] = interp2d(data[i, :, :])
+        except ValueError:  # TODO - разобраться что не так
+            pass
+
+    return output
+
+
+def mask3d(array, mask):
+    array[np.isnan(array)] = 0
+    mask = np.repeat(mask[None, ...], array.shape[0], axis=0)
+    array = np.ma.masked_array(array, mask=mask)
+    return  array

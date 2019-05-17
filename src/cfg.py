@@ -1,5 +1,4 @@
 
-
 var_dict = [{'variable': 'Thickness',  # sattelite
              'path': '/home/hpc-rosneft/nfs/0_42/share_rosneft/input_data/NEMO/14km/ice-restoring/',
              'file_mask': 'ice_thick_y{}.nc'},
@@ -48,3 +47,5 @@ var_dict = [{'variable': 'Thickness',  # sattelite
              'path': '/home/hpc-rosneft/nfs/0_42/share_rosneft/output_yearly/',
              'file_mask': 'T_grid_y{}.nc'}
             ]
+mask_path = '/home/hpc-rosneft/drigo/surrogate/data/mask.npy'
+processed_data_path = '/home/hpc-rosneft/nfs/0_42/share_rosneft/data_numpy_dump/'
