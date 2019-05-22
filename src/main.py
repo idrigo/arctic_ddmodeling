@@ -34,13 +34,16 @@ reg_params = dict(model=Lasso(alpha=0.1, max_iter=10000),
                   dy=2,
                   dt=2
                   )
+log = Logger(to_file=False, silent=True)
+
 
 class Main:
+    def __init__(self, parameters=parameters, reg_params=reg_params, logger=log):
 
-    def __init__(self, parameters=parameters, reg_params=reg_params):
-
+        self.log = logger
         self.par = parameters
         self.reg_params = reg_params
+        self.log.start(parameters, reg_params)
 
         self.mask = np.load(cfg.mask_path)
 
@@ -54,14 +57,15 @@ class Main:
         self.out = None
 
         self.init_data()
-        log.start(parameters, reg_params)
+
+
 
     def init_data(self):
         """
         Method to define class arguments
         :return:
         """
-        log.info('Loading test and train data...')
+        self.log.info('Loading test and train data...')
 
         self.y_arr_train, self.X_arr_train = dset.load_features(self.par['y_var'],
                                                                 self.par['X_vars'],
@@ -77,7 +81,7 @@ class Main:
         out = np.empty_like(self.y_arr_test)
         out[:] = np.nan
         self.out = out
-        log.info('Data is loaded')
+        self.log.info('Data is loaded')
 
     def predict_point(self, point):
         """
@@ -115,13 +119,13 @@ class Main:
 
         indices = self.gen_indices(bounds, step)
         start = time.time()
-        log.info('{} points'.format(len(indices)))
+        self.log.info('{} points'.format(len(indices)))
         if parallel:
             from multiprocessing import Pool
             # TODO - разобраться что тут не так
             assert type(parallel) is int, 'Number of processes should be int type'
 
-            log.info('Starting regression using {} cores'.format(parallel))
+            self.log.info('Starting regression using {} cores'.format(parallel))
             with Pool(parallel) as pool:
                 res = pool.starmap(self.predict_point, indices, 1)
 
@@ -132,7 +136,7 @@ class Main:
             '''
 
         else:
-            log.info('Starting regression on a single core')
+            self.log.info('Starting regression on a single core')
             res = []
             for idx, point in tqdm(enumerate(indices), total=len(indices)):
                 res.append(self.predict_point(point))
@@ -140,7 +144,7 @@ class Main:
         result = self.restore_array(res, indices)
         elapsed = (time.time() - start)
 
-        log.info('Processed {} points in {} ({} points/sec)'.format(len(indices),
+        self.log.info('Processed {} points in {} ({} points/sec)'.format(len(indices),
                                                                     str(timedelta(seconds=elapsed)),
                                                                     round(len(indices) / elapsed), 5))
         return result
@@ -161,7 +165,7 @@ class Main:
 
     def restore_array(self, array_in, indices):
 
-        log.info('Constructing output array')
+        self.log.info('Constructing output array')
         for idx, val in enumerate(indices):
             (i, j) = indices[idx]
             self.out[:, i, j] = array_in[idx]
@@ -186,35 +190,10 @@ class Main:
 
     def save(self):  # todo - доделать
         import datetime
+        import os
         time_now = datetime.datetime.now().strftime("%m%d_%H%M")
-        log.info('Saving results to file')
+        self.log.info('Saving results to file')
         fname = 'res_{}.npy'.format(time_now)
-        fname=os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'data', 'results', fname))
+        fname = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'data', 'results', fname))
         self.out.dump(fname)
-        log.info('Results were written to file {}'.format(fname))
-
-
-if __name__ == '__main__':
-
-    args = parser()
-    log = Logger(to_file=True, silent=False)
-
-    parameters = dict(years_train=list(range(2010, 2014)),
-                      years_test=[2014, 2015],
-                      X_vars=['ice_conc', 'tair', 'votemper'],
-                      y_var='thick_cr2smos',
-                      bounds=[0, 400, 0, 400],
-                      step=[20, 20]
-                      )
-
-    reg_params = dict(model=Lasso(alpha=0.1, max_iter=10000),
-                      dx=2,
-                      dy=2,
-                      dt=2
-                      )
-
-    m = Main(parameters=parameters, reg_params=reg_params)
-    m.predict_area()
-    m.interpolate()
-    m.apply_mask()
-    m.save()
+        self.log.info('Results were written to file {}'.format(fname))

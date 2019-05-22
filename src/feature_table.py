@@ -1,8 +1,9 @@
 import numpy as np
 
-#try:
+
+# try:
 #    from src.netcdftools import MyNetCDF  # for classical usage
-#except:
+# except:
 #    from netcdftools import MyNetCDF  # for Jupyter Notebook
 
 

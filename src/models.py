@@ -3,7 +3,7 @@ import numpy as np
 
 from sklearn.metrics import mean_squared_error as mse
 import warnings
-warnings.filterwarnings("ignore",category =RuntimeWarning)
+warnings.filterwarnings("ignore",category=RuntimeWarning)
 
 def clean_data(X, y):
     m = np.column_stack([y, X])
