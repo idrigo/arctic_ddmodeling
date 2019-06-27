@@ -26,7 +26,7 @@ class FeatureTable:
         data = self.data
         deltas = self.deltas
         point = self.point
-
+        # TODO - np.clip
         idx = [[point[0] - deltas[0], point[0] + deltas[0] + 1],
                [point[1] - deltas[1], point[1] + deltas[1] + 1],
                [point[2] - deltas[2], point[2] + deltas[2] + 1]]

@@ -197,3 +197,16 @@ class Main:
         fname = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'data', 'results', fname))
         self.out.dump(fname)
         self.log.info('Results were written to file {}'.format(fname))
+
+    def get_ft(self, point):
+        X_train = []
+        X_test = []
+        for var_n, var in enumerate(self.par['X_vars']):
+            X = self.ft.gen_matrix(data=self.X_arr_train[var_n], x=point[0], y=point[1])
+            X_train.append(X)
+            X = self.ft.gen_matrix(data=self.X_arr_test[var_n], x=point[0], y=point[1])
+            X_test.append(X)
+
+        X_train = np.hstack([*X_train])
+        X_test = np.hstack([*X_test])
+        return X_train

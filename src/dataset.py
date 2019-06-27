@@ -17,7 +17,6 @@ def load(variable, year):
         data = np.load(path)
         return data
     except FileNotFoundError:
-
         var = next((item for item in cfg.var_dict if item['variable'] == variable), None)
         if var is None:
             raise Exception('Variable is not found in config file')
