@@ -49,6 +49,9 @@ class Preprocessing:
 
 
 class Logger:
+    # TODO - сейчас при параллельном запуске воркеров логгирование сыпется в один файл и перекрывает друг друга.
+    #  Реализовать асинхронный лог
+
     def __init__(self, to_file=False, silent=False):
         self.filename = None
         path = os.path.abspath(os.path.join(os.path.dirname( __file__ ), '..', 'log.txt'))

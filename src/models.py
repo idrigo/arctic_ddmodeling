@@ -3,23 +3,37 @@ import numpy as np
 
 from sklearn.metrics import mean_squared_error as mse
 import warnings
-warnings.filterwarnings("ignore",category=RuntimeWarning)
+warnings.filterwarnings("ignore", category=RuntimeWarning)
 
 def clean_data(X, y):
+    """
+    Cleans out rows with NaN from train set
+    :param X:
+    :param y:
+    :return: cleaned data
+    """
     m = np.column_stack([y, X])
     m = m[~np.isnan(m).any(axis=1)]
     return m[:,0], m[:,1:]
 
 
 def regress(X, y, X_test, y_test, model, mse_calc = False):
+    """
+    A function to apply regression and measure RMSE accuracy
+    :param X: train set
+    :param y: train target variable
+    :param X_test: test set
+    :param y_test: test target variable
+    :param model: regression model to fit
+    :param mse_calc:
+    :return:
+    """
     # todo - make a class
-    reg = model
     y_c, X_c = clean_data(X, y)
-    reg.fit(X=X_c, y=y_c)
+    model.fit(X=X_c, y=y_c)
 
     mask = ~np.isnan(X_test).any(axis=1)
-    pred = reg.predict(X_test[mask])
-    # idx = np.argwhere(mask).ravel()
+    pred = model.predict(X_test[mask])
 
     pred_out = np.empty_like(y_test)
     pred_out[mask] = pred

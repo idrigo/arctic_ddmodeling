@@ -14,7 +14,16 @@ class FeatureTable:
 
     # TODO throw error if x or y not defined
     def __init__(self, x=None, y=None, data=None, t=0, dx=0, dy=0, dt=0):
+        """
 
+        :param x: x-coordinate of a point
+        :param y: y-coordinate of a point
+        :param data: data array
+        :param t: time step
+        :param dx: one-side delta of x axis
+        :param dy: one-side delta of y axis
+        :param dt: one-side delta of t axis
+        """
         self.data = data
         self.point = [t, x, y]
 
@@ -23,11 +32,15 @@ class FeatureTable:
         self.matrix = None
 
     def select(self):
+        """
+
+        :return:
+        """
         data = self.data
         deltas = self.deltas
         point = self.point
         # TODO - np.clip
-        idx = [[point[0] - deltas[0], point[0] + deltas[0] + 1],
+        idx = [[point[0] - deltas[0], point[0] + deltas[0] + 1], # creating index matrix
                [point[1] - deltas[1], point[1] + deltas[1] + 1],
                [point[2] - deltas[2], point[2] + deltas[2] + 1]]
         idx = np.array(idx)
@@ -43,7 +56,13 @@ class FeatureTable:
         return output.ravel()
 
     def gen_matrix(self, data=None, x=None, y=None):
+        """
 
+        :param data:
+        :param x:
+        :param y:
+        :return:
+        """
         if x or y is not None:
             self.point[1] = x
             self.point[2] = y
@@ -64,7 +83,11 @@ class FeatureTable:
 
 
 def numpy_fillna(data):
-    # Get lengths of each row of data
+    """
+    Function to make 2D numpy array from array of unequal length arrays filling with nans
+    :param data: input array with rows of unequal lengths
+    :return: 2D numpy array
+    """
     lens = np.array([len(i) for i in data])
 
     # Mask of valid places in each row

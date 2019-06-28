@@ -38,7 +38,17 @@ log = Logger(to_file=False, silent=True)
 
 
 class Main:
+    """
+
+    """
+
     def __init__(self, parameters=parameters, reg_params=reg_params, logger=log):
+        """
+
+        :param parameters:
+        :param reg_params:
+        :param logger:
+        """
 
         self.log = logger
         self.par = parameters
@@ -58,11 +68,9 @@ class Main:
 
         self.init_data()
 
-
-
     def init_data(self):
         """
-        Method to define class arguments
+
         :return:
         """
         self.log.info('Loading test and train data...')
@@ -112,6 +120,13 @@ class Main:
         return pred
 
     def predict_area(self, bounds=None, step=None, parallel=None):
+        """
+
+        :param bounds:
+        :param step:
+        :param parallel:
+        :return:
+        """
 
         if bounds is None: bounds = self.par['bounds']
 
@@ -122,18 +137,12 @@ class Main:
         self.log.info('{} points'.format(len(indices)))
         if parallel:
             from multiprocessing import Pool
-            # TODO - разобраться что тут не так
+            # TODO - настроить параллелизм
             assert type(parallel) is int, 'Number of processes should be int type'
 
             self.log.info('Starting regression using {} cores'.format(parallel))
             with Pool(parallel) as pool:
                 res = pool.starmap(self.predict_point, indices, 1)
-
-            '''
-            res = res.reshape(dims[1], dims[2], 730)
-            res = np.swapaxes(res, 2, 0)
-            np.save('res.npy', res)
-            '''
 
         else:
             self.log.info('Starting regression on a single core')
@@ -145,11 +154,17 @@ class Main:
         elapsed = (time.time() - start)
 
         self.log.info('Processed {} points in {} ({} points/sec)'.format(len(indices),
-                                                                    str(timedelta(seconds=elapsed)),
-                                                                    round(len(indices) / elapsed), 5))
+                                                                         str(timedelta(seconds=elapsed)),
+                                                                         round(len(indices) / elapsed), 5))
         return result
 
     def gen_indices(self, bounds, step):
+        """
+
+        :param bounds:
+        :param step:
+        :return:
+        """
         from itertools import product
         i = range(bounds[0],
                   bounds[1],

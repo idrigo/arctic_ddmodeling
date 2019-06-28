@@ -73,7 +73,13 @@ class MyNetCDF:
 
     def extract_point(self, x, y, time, variables, z=0):
         """
-        Extracting a single point from dataset
+
+        :param x:
+        :param y:
+        :param time:
+        :param variables:
+        :param z:
+        :return:
         """
         out_list = []
         for var in variables:

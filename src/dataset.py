@@ -1,5 +1,3 @@
-import os
-
 import netCDF4 as nc
 import numpy as np
 
@@ -10,6 +8,7 @@ except:
 
 
 def load(variable, year):
+
     abspath = cfg.processed_data_path
     path = '{}/{}_{}.npy'.format(abspath, variable, year)
 
@@ -43,6 +42,7 @@ def load(variable, year):
 
 
 def load_features(y_var, X_vars, years, point=None):
+
     X_arr = []
     for var in X_vars:
         to_append = load_variable_years(var, years, point)
@@ -53,6 +53,7 @@ def load_features(y_var, X_vars, years, point=None):
 
 
 def load_variable_years(variable, years, point=None):
+
     data = []
     for year in years:
         d = load(year=year, variable=variable)
@@ -65,6 +66,7 @@ def load_variable_years(variable, years, point=None):
 
 
 def interpolate(data, method):
+
     from scipy import interpolate
     from tqdm import tqdm
 
@@ -96,6 +98,11 @@ def interpolate(data, method):
 
 
 def mask3d(array, mask):
+    """
+    Args:
+        array:
+        mask:
+    """
     array[np.isnan(array)] = 0
     mask = np.repeat(mask[None, ...], array.shape[0], axis=0)
     array = np.ma.masked_array(array, mask=mask)
