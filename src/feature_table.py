@@ -9,7 +9,7 @@ import numpy as np
 
 class FeatureTable:
     """
-    A class to create and handle feature tables –
+    A class to create and handle feature tables
     """
 
     # TODO throw error if x or y not defined
