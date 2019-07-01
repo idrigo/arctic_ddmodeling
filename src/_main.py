@@ -38,9 +38,6 @@ log = Logger(to_file=False, silent=True)
 
 
 class Main:
-    """
-
-    """
 
     def __init__(self, parameters=parameters, reg_params=reg_params, logger=log):
         """
@@ -141,8 +138,11 @@ class Main:
             assert type(parallel) is int, 'Number of processes should be int type'
 
             self.log.info('Starting regression using {} cores'.format(parallel))
-            with Pool(parallel) as pool:
-                res = pool.starmap(self.predict_point, indices, 1)
+            #with Pool(parallel) as pool:
+            pool = Pool(processes=parallel)
+            res = pool.imap(self.predict_point, indices, chunksize=10)
+            pool.close()
+            pool.join()
 
         else:
             self.log.info('Starting regression on a single core')
