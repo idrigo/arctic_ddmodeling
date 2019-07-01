@@ -5,7 +5,10 @@ import numpy as np
 #    from src.netcdftools import MyNetCDF  # for classical usage
 # except:
 #    from netcdftools import MyNetCDF  # for Jupyter Notebook
-
+try:
+    from src.models import clean_data
+except ModuleNotFoundError:
+    from models import clean_data
 
 class FeatureTable:
     """
@@ -31,12 +34,11 @@ class FeatureTable:
 
         self.matrix = None
 
-    def select(self):
+    def select(self, data):
         """
 
         :return:
         """
-        data = self.data
         deltas = self.deltas
         point = self.point
         # TODO - np.clip
@@ -70,18 +72,27 @@ class FeatureTable:
         if data is not None:
             self.data = data
 
-        matrix = []
-        # TODO: do smth if rows are not equal length (for time and bounds)
-        for i in range(np.shape(self.data)[0]):
-            self.point[0] = i
-            selection = self.select()
-            matrix.append(selection)
-        m = np.array(matrix)
+        X_out = []
+        for arr in data:
+            matrix = []
+            for i in range(np.shape(arr)[0]):
+                self.point[0] = i
+                selection = self.select(arr)
+                matrix.append(selection)
+            m = np.array(matrix)
+            X_out.append(numpy_fillna(m))
 
-        self.matrix = numpy_fillna(m)
-        return self.matrix
+        X_out = np.hstack([*X_out])
+        self.matrix = X_out
+        return X_out
 
 
+def pca(data, exp_var=90):
+    # TODO make pca implementation witn n_components based on explained vatriance
+    from sklearn.decomposition import PCA
+
+
+    return
 def numpy_fillna(data):
     """
     Function to make 2D numpy array from array of unequal length arrays filling with nans

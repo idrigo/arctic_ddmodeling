@@ -97,21 +97,12 @@ class Main:
         y_train = self.y_arr_train[:, point[0], point[1]]
         y_test = self.y_arr_test[:, point[0], point[1]]
 
-        X_train = []
-        X_test = []
-        for var_n, var in enumerate(self.par['X_vars']):
-            X = self.ft.gen_matrix(data=self.X_arr_train[var_n], x=point[0], y=point[1])
-            X_train.append(X)
-            X = self.ft.gen_matrix(data=self.X_arr_test[var_n], x=point[0], y=point[1])
-            X_test.append(X)
-
-        X_train = np.hstack([*X_train])
-        X_test = np.hstack([*X_test])
-
-        if np.count_nonzero(~np.isnan(y_train)) == 0:
+        if np.count_nonzero(~np.isnan(y_train)) == 0: # if point is empty
             pred = np.empty_like(y_test)
             pred[:] = np.nan
         else:
+            X_train = self.ft.gen_matrix(data=self.X_arr_train, x=point[0], y=point[1])
+            X_test = self.ft.gen_matrix(data=self.X_arr_test, x=point[0], y=point[1])
             mse_val, pred = regress(X_train, y_train, X_test, y_test, model=self.reg_params['model'])
 
         return pred
@@ -214,14 +205,8 @@ class Main:
         self.log.info('Results were written to file {}'.format(fname))
 
     def get_ft(self, point):
-        X_train = []
-        X_test = []
-        for var_n, var in enumerate(self.par['X_vars']):
-            X = self.ft.gen_matrix(data=self.X_arr_train[var_n], x=point[0], y=point[1])
-            X_train.append(X)
-            X = self.ft.gen_matrix(data=self.X_arr_test[var_n], x=point[0], y=point[1])
-            X_test.append(X)
 
-        X_train = np.hstack([*X_train])
-        X_test = np.hstack([*X_test])
-        return X_train
+        X_train = self.ft.gen_matrix(data=self.X_arr_train, x=point[0], y=point[1])
+        X_test = self.ft.gen_matrix(data=self.X_arr_test, x=point[0], y=point[1])
+
+        return X_train, X_test

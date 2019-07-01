@@ -5,7 +5,7 @@ from sklearn.metrics import mean_squared_error as mse
 import warnings
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 
-def clean_data(X, y):
+def clean_data(y, X):
     """
     Cleans out rows with NaN from train set
     :param X:
