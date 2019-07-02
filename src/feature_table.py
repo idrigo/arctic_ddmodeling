@@ -57,7 +57,7 @@ class FeatureTable:
 
         return output.ravel()
 
-    def gen_matrix(self, data=None, x=None, y=None):
+    def gen_matrix(self, data=None, x=None, y=None, enable_pca=False):
         """
 
         :param data:
@@ -83,16 +83,28 @@ class FeatureTable:
             X_out.append(numpy_fillna(m))
 
         X_out = np.hstack([*X_out])
-        self.matrix = X_out
-        return X_out
+        if enable_pca:
+            self.matrix = pca(X_out)
+        else:
+            self.matrix = X_out
+        return self.matrix
 
 
-def pca(data, exp_var=90):
+def pca(data, exp_var=95):
     # TODO make pca implementation witn n_components based on explained vatriance
     from sklearn.decomposition import PCA
+    data_clean = clean_data(X=data)
+    pca = PCA(100)
+    pca.fit(data_clean)
+
+    var_pca = np.cumsum(np.round(pca.explained_variance_ratio_, decimals=3) * 100)
+    n_comp = np.argmax(var_pca > exp_var)
+    data_transformed = PCA(n_comp).fit_transform(data_clean)
 
 
-    return
+    return data_transformed
+
+
 def numpy_fillna(data):
     """
     Function to make 2D numpy array from array of unequal length arrays filling with nans

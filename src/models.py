@@ -5,17 +5,22 @@ from sklearn.metrics import mean_squared_error as mse
 import warnings
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 
-def clean_data(y, X):
+
+def clean_data(X, y=None):
     """
     Cleans out rows with NaN from train set
     :param X:
     :param y:
     :return: cleaned data
     """
-    m = np.column_stack([y, X])
-    m = m[~np.isnan(m).any(axis=1)]
-    return m[:,0], m[:,1:]
-
+    if y is not None:
+        m = np.column_stack([y, X])
+        m = m[~np.isnan(m).any(axis=1)]
+        return m[:,0], m[:,1:]
+    else:
+        m = X
+        m = m[~np.isnan(m).any(axis=1)]
+        return m
 
 def regress(X, y, X_test, y_test, model, mse_calc = False):
     """
@@ -29,7 +34,7 @@ def regress(X, y, X_test, y_test, model, mse_calc = False):
     :return:
     """
     # todo - make a class
-    y_c, X_c = clean_data(X, y)
+    y_c, X_c = clean_data(X=X, y=y)
     model.fit(X=X_c, y=y_c)
 
     mask = ~np.isnan(X_test).any(axis=1)

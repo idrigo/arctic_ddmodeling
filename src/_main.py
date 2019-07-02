@@ -13,8 +13,6 @@ try:
 except ModuleNotFoundError:
     import sys
     import os
-    # abspath = os.path.abspath(os.path.join(os.path.dirname(__file__), 'src'))
-    # sys.path.append('/home/hpc-rosneft/drigo/surrogate/src/')
     import cfg
     import dataset as dset
     from feature_table import FeatureTable
@@ -32,7 +30,8 @@ parameters = dict(years_train=list(range(2010, 2012)),
 reg_params = dict(model=Lasso(alpha=0.1, max_iter=10000),
                   dx=2,
                   dy=2,
-                  dt=2
+                  dt=2,
+                  enable_pca=False
                   )
 log = Logger(to_file=False, silent=True)
 
@@ -88,12 +87,16 @@ class Main:
         self.out = out
         self.log.info('Data is loaded')
 
-    def predict_point(self, point):
+    def predict_point(self, point, enable_pca = False):
         """
         Method to fit a regression on one point, given as (t, x, y)
         :param point: list or tuple of point coordinates (t, x, y)
         :return: y vector of len (t) as a regression prediction
         """
+        if 'enable_pca' in self.reg_params:
+            self.log.info('PCA dimension reduction...')
+            enable_pca = self.reg_params['enable_pca']
+
         y_train = self.y_arr_train[:, point[0], point[1]]
         y_test = self.y_arr_test[:, point[0], point[1]]
 
@@ -101,8 +104,8 @@ class Main:
             pred = np.empty_like(y_test)
             pred[:] = np.nan
         else:
-            X_train = self.ft.gen_matrix(data=self.X_arr_train, x=point[0], y=point[1])
-            X_test = self.ft.gen_matrix(data=self.X_arr_test, x=point[0], y=point[1])
+            X_train = self.ft.gen_matrix(data=self.X_arr_train, x=point[0], y=point[1], enable_pca=enable_pca)
+            X_test = self.ft.gen_matrix(data=self.X_arr_test, x=point[0], y=point[1],  enable_pca=enable_pca)
             mse_val, pred = regress(X_train, y_train, X_test, y_test, model=self.reg_params['model'])
 
         return pred
