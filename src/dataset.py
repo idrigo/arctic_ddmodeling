@@ -107,3 +107,4 @@ def mask3d(array, mask):
     mask = np.repeat(mask[None, ...], array.shape[0], axis=0)
     array = np.ma.masked_array(array, mask=mask)
     return  array
+

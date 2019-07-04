@@ -7,17 +7,17 @@ from tqdm import tqdm
 try:
     import src.dataset as dset
     from src.feature_table import FeatureTable
-    from src.models import regress
     import src.cfg as cfg
     from src.tools import Logger, parser
+    from src.models import Regression
 except ModuleNotFoundError:
     import sys
     import os
     import cfg
     import dataset as dset
     from feature_table import FeatureTable
-    from models import regress
     from tools import Logger, parser
+    from models import Regression
 
 parameters = dict(years_train=list(range(2010, 2012)),
                   years_test=[2014, 2015],
@@ -94,19 +94,27 @@ class Main:
         :return: y vector of len (t) as a regression prediction
         """
         if 'enable_pca' in self.reg_params:
-            self.log.info('PCA dimension reduction...')
             enable_pca = self.reg_params['enable_pca']
+
+        if enable_pca:
+            self.log.info('PCA dimension reduction enabled')
+        else:
+            self.log.info('PCA dimension reduction disabled')
 
         y_train = self.y_arr_train[:, point[0], point[1]]
         y_test = self.y_arr_test[:, point[0], point[1]]
 
-        if np.count_nonzero(~np.isnan(y_train)) == 0: # if point is empty
+        if np.count_nonzero(~np.isnan(y_train)) == 0:  # if point is empty
             pred = np.empty_like(y_test)
             pred[:] = np.nan
         else:
+
             X_train = self.ft.gen_matrix(data=self.X_arr_train, x=point[0], y=point[1], enable_pca=enable_pca)
             X_test = self.ft.gen_matrix(data=self.X_arr_test, x=point[0], y=point[1],  enable_pca=enable_pca)
-            mse_val, pred = regress(X_train, y_train, X_test, y_test, model=self.reg_params['model'])
+
+            regression = Regression(model=self.reg_params['model'], enable_pca=enable_pca)
+            mse_val, pred = regression.regress(X_train=X_train, y_train=y_train,
+                                               X_test=X_test, y_test=y_test)
 
         return pred
 

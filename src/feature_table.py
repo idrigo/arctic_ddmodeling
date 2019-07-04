@@ -1,14 +1,14 @@
 import numpy as np
 
-
 # try:
 #    from src.netcdftools import MyNetCDF  # for classical usage
 # except:
 #    from netcdftools import MyNetCDF  # for Jupyter Notebook
 try:
-    from src.models import clean_data
+    from src.dataset import clean_data
 except ModuleNotFoundError:
-    from models import clean_data
+    from dataset import clean_data
+
 
 class FeatureTable:
     """
@@ -83,26 +83,12 @@ class FeatureTable:
             X_out.append(numpy_fillna(m))
 
         X_out = np.hstack([*X_out])
-        if enable_pca:
-            self.matrix = pca(X_out)
-        else:
-            self.matrix = X_out
+        print('xout',X_out.shape)
+
+        self.matrix = X_out
+
         return self.matrix
 
-
-def pca(data, exp_var=95):
-    # TODO make pca implementation witn n_components based on explained vatriance
-    from sklearn.decomposition import PCA
-    data_clean = clean_data(X=data)
-    pca = PCA(100)
-    pca.fit(data_clean)
-
-    var_pca = np.cumsum(np.round(pca.explained_variance_ratio_, decimals=3) * 100)
-    n_comp = np.argmax(var_pca > exp_var)
-    data_transformed = PCA(n_comp).fit_transform(data_clean)
-
-
-    return data_transformed
 
 
 def numpy_fillna(data):
