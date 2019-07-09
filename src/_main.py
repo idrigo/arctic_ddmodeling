@@ -62,6 +62,8 @@ class Main:
         self.ft = None
         self.out = None
 
+        self.aver = None # TODO – усреднение по пространству
+
         self.init_data()
 
     def init_data(self):
@@ -202,7 +204,7 @@ class Main:
         if data is None:
             data = self.out
 
-        self.out = dset.interpolate(data=data, method=method)
+        self.out = dset.interpolation(data=data, method=method)
         return self.out
 
     def save(self):  # todo - доделать

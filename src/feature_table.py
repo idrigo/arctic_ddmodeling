@@ -1,14 +1,5 @@
 import numpy as np
 
-# try:
-#    from src.netcdftools import MyNetCDF  # for classical usage
-# except:
-#    from netcdftools import MyNetCDF  # for Jupyter Notebook
-try:
-    from src.dataset import clean_data
-except ModuleNotFoundError:
-    from dataset import clean_data
-
 
 class FeatureTable:
     """
@@ -83,12 +74,10 @@ class FeatureTable:
             X_out.append(numpy_fillna(m))
 
         X_out = np.hstack([*X_out])
-        print('xout',X_out.shape)
 
         self.matrix = X_out
 
         return self.matrix
-
 
 
 def numpy_fillna(data):

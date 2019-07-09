@@ -6,7 +6,7 @@ from sklearn.metrics import mean_squared_error as mse
 import warnings
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 
-from sklearn.decomposition import PCA
+from sklearn.decomposition import PCA, TruncatedSVD
 
 
 class Regression:
@@ -39,16 +39,18 @@ class Regression:
             X = X[~np.isnan(X).any(axis=1)]
             return X
 
-    def my_pca(self, data, exp_var=98, fit=False):
+    def my_pca(self, data, exp_var=99.99, fit=False):
 
-        pca = PCA()
-        pca.fit(data)
         if fit:
+            #pca = PCA()
+            pca = TruncatedSVD(n_components=100)
+            pca.fit(data)
             var_pca = np.cumsum(pca.explained_variance_ratio_ * 100)
             self.n_comp = np.argmax(var_pca > exp_var)
             print('Number of components for {}% explained variance: {}'.format(exp_var, self.n_comp))
 
-        data_transformed = PCA(n_components=self.n_comp).fit_transform(data)
+        #data_transformed = PCA(n_components=self.n_comp).fit_transform(data)
+        data_transformed = TruncatedSVD(n_components=100).fit_transform(data)
         return data_transformed
 
     def regress(self, X_train, y_train, X_test, y_test):
@@ -61,18 +63,15 @@ class Regression:
         :return:
         """
 
-        y_clean, X_clean = self.clean_data(X=X_train, y=y_train)
-
-        if self.enable_pca:
-            X_clean = self.my_pca(data=X_clean, fit=True)
-
-        self.model.fit(X=X_clean, y=y_clean)
-
         mask = ~np.isnan(X_test).any(axis=1)
+        y_clean, X_train_clean = self.clean_data(X=X_train, y=y_train)
+
         X_test_clean = X_test[mask]
 
         if self.enable_pca:
-            X_test_clean = self.my_pca(X_test_clean, fit=False)
+            X_train_clean = self.my_pca(data=X_train_clean, fit=True)
+            X_test_clean = self.my_pca(data=X_test_clean, fit=False)
+        self.model.fit(X=X_train_clean, y=y_clean)
 
         pred = self.model.predict(X_test_clean)
 
@@ -87,6 +86,6 @@ class Regression:
         except ValueError:
             mse_val = -9999
 
-
+        print('RMSE:{}'.format(mse_val))
         return mse_val, pred_out
 

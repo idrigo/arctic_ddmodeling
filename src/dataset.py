@@ -1,5 +1,6 @@
 import netCDF4 as nc
 import numpy as np
+from scipy import interpolate
 
 try:
     from src import cfg
@@ -8,7 +9,6 @@ except:
 
 
 def load(variable, year):
-
     abspath = cfg.processed_data_path
     path = '{}/{}_{}.npy'.format(abspath, variable, year)
 
@@ -42,7 +42,6 @@ def load(variable, year):
 
 
 def load_features(y_var, X_vars, years, point=None):
-
     X_arr = []
     for var in X_vars:
         to_append = load_variable_years(var, years, point)
@@ -53,7 +52,6 @@ def load_features(y_var, X_vars, years, point=None):
 
 
 def load_variable_years(variable, years, point=None):
-
     data = []
     for year in years:
         d = load(year=year, variable=variable)
@@ -65,9 +63,13 @@ def load_variable_years(variable, years, point=None):
     return out_data
 
 
-def interpolate(data, method):
-
-    from scipy import interpolate
+def interpolation(data, method):
+    """
+    Fuction to restore original size of array while being calculated on reduced array
+    :param data:
+    :param method:
+    :return:
+    """
     from tqdm import tqdm
 
     assert len(np.shape(data)) == 3, 'Input array should be 3D'
@@ -97,6 +99,31 @@ def interpolate(data, method):
     return output
 
 
+def regrid(initial_data, grid_step):
+    """
+    Function to interpolate 2D array to the grid with different step
+    :param initial_data: an initial data array
+    :param grid_step: amount of cells to "merge"
+    :return: reduced array
+    """
+    assert len(np.shape(initial_data)) == 2, 'Input array should be 2D'
+    # initial
+    x = np.arange(0, initial_data.shape[1])
+    y = np.arange(0, initial_data.shape[0])
+    xx, yy = np.meshgrid(x, y)
+
+    # new
+    x1 = np.arange(0, initial_data.shape[1], grid_step)
+    y1 = np.arange(0, initial_data.shape[0], grid_step)
+    xx1, yy1 = np.meshgrid(x1, y1)
+
+    GD1 = interpolate.griddata(list(zip(xx.ravel(), yy.ravel())),
+                               initial_data.ravel(),
+                               (xx1, yy1), method='linear')
+
+    return GD1
+
+
 def mask3d(array, mask):
     """
     Args:
@@ -106,5 +133,4 @@ def mask3d(array, mask):
     array[np.isnan(array)] = 0
     mask = np.repeat(mask[None, ...], array.shape[0], axis=0)
     array = np.ma.masked_array(array, mask=mask)
-    return  array
-
+    return array
