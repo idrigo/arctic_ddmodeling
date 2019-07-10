@@ -125,7 +125,6 @@ def regrid(initial_data, grid_step):
                                    initial_data.ravel(),
                                    (xx1, yy1), method='linear')
         return GD1
-
     output = np.empty((initial_data.shape[0], xx1.shape[0], xx1.shape[1]))
     for i in tqdm(range(initial_data.shape[0])):
         try:
@@ -135,8 +134,27 @@ def regrid(initial_data, grid_step):
 
     return output
 
+def rshp(initial_data, shape):
+    from tqdm import tqdm
+
+    assert len(np.shape(initial_data)) == 3, 'Input array should be 3D'
+
+    def rshp2d(data, shape):
+        narr = np.pad(data, ((0, shape[0] - data.shape[0] % shape[0]), (0, shape[1] - data.shape[1] % shape[1])),
+                  mode='constant',
+                  constant_values=np.NaN)
+
+        sh = shape[0], narr.shape[0] // shape[0], shape[1], narr.shape[1] // shape[1]
+        return narr.reshape(sh).mean(-1).mean(1)
+
+    output = np.empty((initial_data.shape[0], shape[0], shape[1]))
+    for i in tqdm(range(initial_data.shape[0])):
+        output[i, :, :] = rshp2d(initial_data[i, :, :], shape)
+
+    return output
 
 def iterate3d(func):
+    # todo - доделать обертку
     def wrapper(data):
         from tqdm import tqdm
 
