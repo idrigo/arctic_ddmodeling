@@ -99,6 +99,8 @@ def interpolation(data, method):
     return output
 
 
+# TODO сделать декоратор чтобы оборачивать интерполяции по 2d
+# TODO cleanup code
 def regrid(initial_data, grid_step):
     """
     Function to interpolate 2D array to the grid with different step
@@ -106,10 +108,11 @@ def regrid(initial_data, grid_step):
     :param grid_step: amount of cells to "merge"
     :return: reduced array
     """
-    assert len(np.shape(initial_data)) == 2, 'Input array should be 2D'
-    # initial
-    x = np.arange(0, initial_data.shape[1])
-    y = np.arange(0, initial_data.shape[0])
+    from tqdm import tqdm
+
+    assert len(np.shape(initial_data)) == 3, 'Input array should be 3D'
+    x = np.arange(0, initial_data.shape[2])
+    y = np.arange(0, initial_data.shape[1])
     xx, yy = np.meshgrid(x, y)
 
     # new
@@ -117,11 +120,39 @@ def regrid(initial_data, grid_step):
     y1 = np.arange(0, initial_data.shape[0], grid_step)
     xx1, yy1 = np.meshgrid(x1, y1)
 
-    GD1 = interpolate.griddata(list(zip(xx.ravel(), yy.ravel())),
-                               initial_data.ravel(),
-                               (xx1, yy1), method='linear')
+    def interp2d(initial_data, xx, yy, xx1, yy1):
+        GD1 = interpolate.griddata(list(zip(xx.ravel(), yy.ravel())),
+                                   initial_data.ravel(),
+                                   (xx1, yy1), method='linear')
+        return GD1
 
-    return GD1
+    output = np.empty((initial_data.shape[0], xx1.shape[0], xx1.shape[1]))
+    for i in tqdm(range(initial_data.shape[0])):
+        try:
+            output[i, :, :] = interp2d(initial_data[i, :, :], xx, yy, xx1, yy1)
+        except ValueError:  # TODO - разобраться что не так
+            pass
+
+    return output
+
+
+def iterate3d(func):
+    def wrapper(data):
+        from tqdm import tqdm
+
+        assert len(np.shape(data)) == 3, 'Input array should be 3D'
+        x = np.arange(0, data.shape[2])
+        y = np.arange(0, data.shape[1])
+        xx, yy = np.meshgrid(x, y)
+
+        output = np.empty_like(data)
+        for i in tqdm(range(data.shape[0])):
+            try:
+                output[i, :, :] = func(data[i, :, :])
+            except ValueError:  # TODO - разобраться что не так
+                pass
+
+        return output
 
 
 def mask3d(array, mask):
