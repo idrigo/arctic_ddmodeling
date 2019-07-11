@@ -24,7 +24,8 @@ parameters = dict(years_train=list(range(2010, 2012)),
                   X_vars=['ice_conc', 'tair', 'votemper'],
                   y_var='thick_cr2smos',
                   bounds=[0, 400, 0, 400],
-                  step=[1, 1]
+                  step=[1, 1],
+                  average = 5
                   )
 
 reg_params = dict(model=Lasso(alpha=0.1, max_iter=10000),
@@ -62,8 +63,6 @@ class Main:
         self.ft = None
         self.out = None
 
-        self.aver = None # TODO – усреднение по пространству
-
         self.init_data()
 
     def init_data(self):
@@ -87,6 +86,10 @@ class Main:
         out = np.empty_like(self.y_arr_test)
         out[:] = np.nan
         self.out = out
+
+        if 'average' in self.par:
+            self.average(self.par['average'])
+
         self.log.info('Data is loaded')
 
     def predict_point(self, point, enable_pca = False):
@@ -223,3 +226,22 @@ class Main:
         X_test = self.ft.gen_matrix(data=self.X_arr_test, x=point[0], y=point[1])
 
         return X_train, X_test
+
+    def average(self, averaging):
+
+        shape = (self.y_arr_train.shape[1]//averaging, self.y_arr_train.shape[2]//averaging)
+        out_dset = []
+
+        for dataset in [self.X_arr_train, self.X_arr_test]:
+            tmp_out = []
+            for arr in dataset:
+                tmp_out.append(dset.rshp(arr, shape))
+            out_dset.append(tmp_out)
+
+        self.X_arr_train, self.X_arr_test = [*out_dset]
+
+        out_dset = []
+        for arr in [self.y_arr_train, self.y_arr_test]:
+            out_dset.append(dset.rshp(arr, shape))
+
+        self.y_arr_train, self.y_arr_test = [*out_dset]

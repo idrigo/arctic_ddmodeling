@@ -135,6 +135,7 @@ def regrid(initial_data, grid_step):
     return output
 
 def rshp(initial_data, shape):
+    # todo – маска суши
     from tqdm import tqdm
 
     assert len(np.shape(initial_data)) == 3, 'Input array should be 3D'
