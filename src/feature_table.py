@@ -1,5 +1,10 @@
 import numpy as np
 
+try:
+    from src.filters import MyPCA
+except ModuleNotFoundError:
+    from models import MyPCA
+
 
 class FeatureTable:
     """
@@ -33,7 +38,7 @@ class FeatureTable:
         deltas = self.deltas
         point = self.point
         # TODO - np.clip
-        idx = [[point[0] - deltas[0], point[0] + deltas[0] + 1], # creating index matrix
+        idx = [[point[0] - deltas[0], point[0] + deltas[0] + 1],  # creating index matrix
                [point[1] - deltas[1], point[1] + deltas[1] + 1],
                [point[2] - deltas[2], point[2] + deltas[2] + 1]]
         idx = np.array(idx)
@@ -48,7 +53,7 @@ class FeatureTable:
 
         return output.ravel()
 
-    def gen_matrix(self, data=None, x=None, y=None, enable_pca=False):
+    def gen_matrix(self, data=None, x=None, y=None, filters=None):
         """
 
         :param data:
@@ -66,18 +71,45 @@ class FeatureTable:
         X_out = []
         for arr in data:
             matrix = []
-            for i in range(np.shape(arr)[0]):
+            for i in range(arr.shape[0]):
                 self.point[0] = i
                 selection = self.select(arr)
                 matrix.append(selection)
             m = np.array(matrix)
-            X_out.append(numpy_fillna(m))
+            m = numpy_fillna(m)
+            X_out.append(m)
 
-        X_out = np.hstack([*X_out])
-
-        self.matrix = X_out
+        # X_out = np.hstack([*X_out])
+        self.matrix = self.apply_filter(data=X_out, filters=filters)
 
         return self.matrix
+
+    def apply_filter(self, data, filters):
+
+        out = []
+        if filters is None:
+            out = np.hstack([*data])
+            return out
+
+        if 'partial_pca' in filters:
+            if filters['partial_pca'] == 'auto':
+                for chunk in data:
+                    m = MyPCA().fit_transform(chunk, fit=True)
+                    out.append(m)
+            else:
+                for chunk in data:
+                    m = MyPCA(n_comp=filters['partial_pca']).fit_transform(chunk, fit=False)
+                    out.append(m)
+            return np.hstack([*out])
+
+        if 'pca' in filters:
+            data = np.hstack([*data])
+            if filters['pca'] == 'auto':
+                out = MyPCA().fit_transform(data, fit=True)
+            else:
+                out = MyPCA(n_comp=filters['pca']).fit_transform(data, fit=False)
+
+            return out
 
 
 def numpy_fillna(data):

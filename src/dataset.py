@@ -134,6 +134,7 @@ def regrid(initial_data, grid_step):
 
     return output
 
+
 def rshp(initial_data, shape):
     # todo – маска суши
     from tqdm import tqdm
@@ -153,6 +154,7 @@ def rshp(initial_data, shape):
         output[i, :, :] = rshp2d(initial_data[i, :, :], shape)
 
     return output
+
 
 def iterate3d(func):
     # todo - доделать обертку
@@ -184,3 +186,4 @@ def mask3d(array, mask):
     mask = np.repeat(mask[None, ...], array.shape[0], axis=0)
     array = np.ma.masked_array(array, mask=mask)
     return array
+

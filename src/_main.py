@@ -25,7 +25,7 @@ parameters = dict(years_train=list(range(2010, 2012)),
                   y_var='thick_cr2smos',
                   bounds=[0, 400, 0, 400],
                   step=[1, 1],
-                  average = 5
+                  average=5
                   )
 
 reg_params = dict(model=Lasso(alpha=0.1, max_iter=10000),
@@ -34,12 +34,16 @@ reg_params = dict(model=Lasso(alpha=0.1, max_iter=10000),
                   dt=2,
                   enable_pca=False
                   )
+filters = dict(pca=2,
+               partial_pca=2
+               )
+
 log = Logger(to_file=False, silent=True)
 
 
 class Main:
 
-    def __init__(self, parameters=parameters, reg_params=reg_params, logger=log):
+    def __init__(self, parameters=parameters, reg_params=reg_params, filters=filters, logger=log):
         """
 
         :param parameters:
@@ -50,7 +54,9 @@ class Main:
         self.log = logger
         self.par = parameters
         self.reg_params = reg_params
-        self.log.start(parameters, reg_params)
+        self.filters = filters
+
+        self.log.start(parameters, reg_params)  # todo add filters
 
         self.mask = np.load(cfg.mask_path)
 
@@ -92,19 +98,12 @@ class Main:
 
         self.log.info('Data is loaded')
 
-    def predict_point(self, point, enable_pca = False):
+    def predict_point(self, point):
         """
         Method to fit a regression on one point, given as (t, x, y)
         :param point: list or tuple of point coordinates (t, x, y)
         :return: y vector of len (t) as a regression prediction
         """
-        if 'enable_pca' in self.reg_params:
-            enable_pca = self.reg_params['enable_pca']
-
-        if enable_pca:
-            self.log.info('PCA dimension reduction enabled')
-        else:
-            self.log.info('PCA dimension reduction disabled')
 
         y_train = self.y_arr_train[:, point[0], point[1]]
         y_test = self.y_arr_test[:, point[0], point[1]]
@@ -114,10 +113,11 @@ class Main:
             pred[:] = np.nan
         else:
 
-            X_train = self.ft.gen_matrix(data=self.X_arr_train, x=point[0], y=point[1], enable_pca=enable_pca)
-            X_test = self.ft.gen_matrix(data=self.X_arr_test, x=point[0], y=point[1],  enable_pca=enable_pca)
+            X_train = self.ft.gen_matrix(data=self.X_arr_train, x=point[0], y=point[1], filters=self.filters)
+            X_test = self.ft.gen_matrix(data=self.X_arr_test, x=point[0], y=point[1], filters=self.filters)
 
-            regression = Regression(model=self.reg_params['model'], enable_pca=enable_pca)
+            #regression = Regression(model=self.reg_params['model'], enable_pca=self.filters['enable_pca'])
+            regression = Regression(model=self.reg_params['model'])
             mse_val, pred = regression.regress(X_train=X_train, y_train=y_train,
                                                X_test=X_test, y_test=y_test)
 
@@ -145,7 +145,7 @@ class Main:
             assert type(parallel) is int, 'Number of processes should be int type'
 
             self.log.info('Starting regression using {} cores'.format(parallel))
-            #with Pool(parallel) as pool:
+            # with Pool(parallel) as pool:
             pool = Pool(processes=parallel)
             res = pool.imap(self.predict_point, indices, chunksize=10)
             pool.close()
@@ -229,7 +229,7 @@ class Main:
 
     def average(self, averaging):
 
-        shape = (self.y_arr_train.shape[1]//averaging, self.y_arr_train.shape[2]//averaging)
+        shape = (self.y_arr_train.shape[1] // averaging, self.y_arr_train.shape[2] // averaging)
         out_dset = []
 
         for dataset in [self.X_arr_train, self.X_arr_test]:

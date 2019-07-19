@@ -1,16 +1,18 @@
-import pandas as pd
-
 import numpy as np
 
 from sklearn.metrics import mean_squared_error as mse
 import warnings
-warnings.filterwarnings("ignore", category=RuntimeWarning)
 
-from sklearn.decomposition import PCA, TruncatedSVD
+try:
+    from src.filters import MyPCA
+except ModuleNotFoundError:
+    from filters import MyPCA
+
+warnings.filterwarnings("ignore", category=RuntimeWarning)
 
 
 class Regression:
-    def __init__(self, model, enable_pca=False):
+    def __init__(self, model):
         self.X_train = None
         self.X_test = None
 
@@ -18,9 +20,6 @@ class Regression:
         self.y_test = None
 
         self.model = model
-
-        self.enable_pca = enable_pca
-        self.n_comp = 5
 
     def clean_data(self, X, y=None):
         """
@@ -39,20 +38,6 @@ class Regression:
             X = X[~np.isnan(X).any(axis=1)]
             return X
 
-    def my_pca(self, data, exp_var=99.99, fit=False):
-
-        if fit:
-            #pca = PCA()
-            pca = TruncatedSVD(n_components=100)
-            pca.fit(data)
-            var_pca = np.cumsum(pca.explained_variance_ratio_ * 100)
-            self.n_comp = np.argmax(var_pca > exp_var)
-            print('Number of components for {}% explained variance: {}'.format(exp_var, self.n_comp))
-
-        #data_transformed = PCA(n_components=self.n_comp).fit_transform(data)
-        data_transformed = TruncatedSVD(n_components=100).fit_transform(data)
-        return data_transformed
-
     def regress(self, X_train, y_train, X_test, y_test):
         """
         A function to apply regression and measure RMSE accuracy
@@ -68,9 +53,12 @@ class Regression:
 
         X_test_clean = X_test[mask]
 
+        '''
         if self.enable_pca:
-            X_train_clean = self.my_pca(data=X_train_clean, fit=True)
-            X_test_clean = self.my_pca(data=X_test_clean, fit=False)
+            PCA = MyPCA()
+            X_train_clean = PCA.fit_transform(data=X_train_clean, fit=True)
+            X_test_clean = PCA.fit_transform(data=X_test_clean, fit=False)
+        '''
         self.model.fit(X=X_train_clean, y=y_clean)
 
         pred = self.model.predict(X_test_clean)
@@ -86,6 +74,4 @@ class Regression:
         except ValueError:
             mse_val = -9999
 
-        print('RMSE:{}'.format(mse_val))
         return mse_val, pred_out
-
