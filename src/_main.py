@@ -34,8 +34,9 @@ reg_params = dict(model=Lasso(alpha=0.1, max_iter=10000),
                   dt=2,
                   enable_pca=False
                   )
-filters = dict(pca=2,
-               partial_pca=2
+
+filters = dict(pca=None,
+               partial_pca=None
                )
 
 log = Logger(to_file=False, silent=True)
@@ -116,6 +117,7 @@ class Main:
             X_train = self.ft.gen_matrix(data=self.X_arr_train, x=point[0], y=point[1], filters=self.filters)
             X_test = self.ft.gen_matrix(data=self.X_arr_test, x=point[0], y=point[1], filters=self.filters)
 
+            print('Using {} features'.format(X_train.shape[1]))
             #regression = Regression(model=self.reg_params['model'], enable_pca=self.filters['enable_pca'])
             regression = Regression(model=self.reg_params['model'])
             mse_val, pred = regression.regress(X_train=X_train, y_train=y_train,
@@ -222,8 +224,8 @@ class Main:
 
     def get_ft(self, point):
 
-        X_train = self.ft.gen_matrix(data=self.X_arr_train, x=point[0], y=point[1])
-        X_test = self.ft.gen_matrix(data=self.X_arr_test, x=point[0], y=point[1])
+        X_train = self.ft.gen_matrix(data=self.X_arr_train, x=point[0], y=point[1], filters=self.filters)
+        X_test = self.ft.gen_matrix(data=self.X_arr_test, x=point[0], y=point[1], filters=self.filters)
 
         return X_train, X_test
 

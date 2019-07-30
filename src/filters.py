@@ -1,6 +1,6 @@
 import numpy as np
 from sklearn.decomposition import PCA
-
+import scipy.ndimage
 
 class MyPCA:
     def __init__(self, n_comp=5):
@@ -24,10 +24,32 @@ class MyPCA:
         out[~mask] = np.nan
         return out
 
+
 class Filter:
 
-    def __init__(self):
-        pass
+    def fit(self, data, method, window=10):
+        methods = {'gaussian', 'running_mean'}
 
-    def gaussian(self):
-        return
+        if method not in methods:
+            raise ValueError('Method must be one of {}'.format(methods))
+
+        if method == 'gaussian':
+            out = np.empty_like(data)
+            for i, col in enumerate(data.T):
+                out[:, i] = self.gaussian(col, window)
+
+        if method == 'running_mean':
+            out = np.empty_like(data)
+            for i, col in enumerate(data.T):
+                out[:, i] = self.running_mean(col, window)
+
+        return out
+
+    @staticmethod
+    def gaussian(series, window):
+        return scipy.ndimage.filters.gaussian_filter1d(series, window)
+
+    @staticmethod
+    def running_mean(series, window):
+        return np.convolve(series, np.ones((window,))/window, mode='same')
+

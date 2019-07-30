@@ -1,9 +1,9 @@
 import numpy as np
 
 try:
-    from src.filters import MyPCA
+    from src.filters import MyPCA, Filter
 except ModuleNotFoundError:
-    from models import MyPCA
+    from filters import MyPCA, Filter
 
 
 class FeatureTable:
@@ -29,6 +29,7 @@ class FeatureTable:
         self.deltas = [dt, dy, dx]
 
         self.matrix = None
+        self.out = None
 
     def select(self, data):
         """
@@ -80,36 +81,53 @@ class FeatureTable:
             X_out.append(m)
 
         # X_out = np.hstack([*X_out])
-        self.matrix = self.apply_filter(data=X_out, filters=filters)
+        self.out = X_out
+        #self.matrix = self.apply_filter(filters=filters)
+        self.apply_filter(filters=filters)
+        return self.out
 
-        return self.matrix
+    def apply_filter(self, filters):
+        # todo - починить пайплайн
 
-    def apply_filter(self, data, filters):
-
-        out = []
         if filters is None:
-            out = np.hstack([*data])
-            return out
+            self.out = np.hstack([*self.out])
 
         if 'partial_pca' in filters:
+            out = []
+            print('Applying partial PCA')
             if filters['partial_pca'] == 'auto':
-                for chunk in data:
+                for chunk in self.out:
                     m = MyPCA().fit_transform(chunk, fit=True)
                     out.append(m)
             else:
-                for chunk in data:
+                for chunk in self.out:
                     m = MyPCA(n_comp=filters['partial_pca']).fit_transform(chunk, fit=False)
                     out.append(m)
-            return np.hstack([*out])
+            self.out = np.hstack([*out])
 
         if 'pca' in filters:
-            data = np.hstack([*data])
-            if filters['pca'] == 'auto':
-                out = MyPCA().fit_transform(data, fit=True)
+            print('Applying PCA')
+            if type(self.out) == 'list':
+                self.out = np.hstack([*self.out])
+                print(self.out.shape)
             else:
-                out = MyPCA(n_comp=filters['pca']).fit_transform(data, fit=False)
+                pass
 
-            return out
+            if filters['pca'] == 'auto':
+                self.out = MyPCA().fit_transform(self.out, fit=True)
+            else:
+                self.out = MyPCA(n_comp=filters['pca']).fit_transform(self.out, fit=False)
+
+        if 'filter_type' in filters:
+            print('Applying {} filter'.format(filters['filter_type']))
+            if type(self.out) == 'list':
+                self.out = np.hstack([*self.out])
+            else:
+                pass
+            if 'filter_window' in filters:
+                self.out = Filter().fit(data=self.out, method=filters['filter_type'], window=filters['filter_window'])
+            else:
+                self.out = Filter().fit(data=self.out, method=filters['filter_type'])
 
 
 def numpy_fillna(data):
@@ -127,5 +145,7 @@ def numpy_fillna(data):
     out = np.zeros(mask.shape, dtype=np.float)
     out[:] = np.nan
     out[mask] = np.concatenate(data)
+
+
 
     return out
