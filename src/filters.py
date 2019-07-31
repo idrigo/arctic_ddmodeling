@@ -9,6 +9,8 @@ class MyPCA:
     def fit_transform(self, data, exp_var=99, fit=False):
 
         mask = ~np.isnan(data).any(axis=1)
+
+
         data_clean = data[mask]
 
         if fit:

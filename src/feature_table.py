@@ -91,43 +91,44 @@ class FeatureTable:
 
         if filters is None:
             self.out = np.hstack([*self.out])
+        else:
 
-        if 'partial_pca' in filters:
-            out = []
-            print('Applying partial PCA')
-            if filters['partial_pca'] == 'auto':
-                for chunk in self.out:
-                    m = MyPCA().fit_transform(chunk, fit=True)
-                    out.append(m)
-            else:
-                for chunk in self.out:
-                    m = MyPCA(n_comp=filters['partial_pca']).fit_transform(chunk, fit=False)
-                    out.append(m)
-            self.out = np.hstack([*out])
+            if 'partial_pca' in filters:
+                out = []
+                print('Applying partial PCA')
+                if filters['partial_pca'] == 'auto':
+                    for chunk in self.out:
+                        m = MyPCA().fit_transform(chunk, fit=True)
+                        out.append(m)
+                else:
+                    for chunk in self.out:
+                        m = MyPCA(n_comp=filters['partial_pca']).fit_transform(chunk, fit=False)
+                        out.append(m)
+                self.out = np.hstack([*out])
 
-        if 'pca' in filters:
-            print('Applying PCA')
-            if type(self.out) == 'list':
-                self.out = np.hstack([*self.out])
-                print(self.out.shape)
-            else:
-                pass
+            if 'pca' in filters:
+                print('Applying PCA')
 
-            if filters['pca'] == 'auto':
-                self.out = MyPCA().fit_transform(self.out, fit=True)
-            else:
-                self.out = MyPCA(n_comp=filters['pca']).fit_transform(self.out, fit=False)
+                if isinstance(self.out, list):
+                    self.out = np.hstack([*self.out])
+                else:
+                    pass
 
-        if 'filter_type' in filters:
-            print('Applying {} filter'.format(filters['filter_type']))
-            if type(self.out) == 'list':
-                self.out = np.hstack([*self.out])
-            else:
-                pass
-            if 'filter_window' in filters:
-                self.out = Filter().fit(data=self.out, method=filters['filter_type'], window=filters['filter_window'])
-            else:
-                self.out = Filter().fit(data=self.out, method=filters['filter_type'])
+                if filters['pca'] == 'auto':
+                    self.out = MyPCA().fit_transform(self.out, fit=True)
+                else:
+                    self.out = MyPCA(n_comp=filters['pca']).fit_transform(self.out, fit=False)
+
+            if 'filter_type' in filters:
+                print('Applying {} filter'.format(filters['filter_type']))
+                if isinstance(self.out, list):
+                    self.out = np.hstack([*self.out])
+                else:
+                    pass
+                if 'filter_window' in filters:
+                    self.out = Filter().fit(data=self.out, method=filters['filter_type'], window=filters['filter_window'])
+                else:
+                    self.out = Filter().fit(data=self.out, method=filters['filter_type'])
 
 
 def numpy_fillna(data):
