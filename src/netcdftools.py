@@ -38,9 +38,18 @@ class MyNetCDF:
         try:
             lat = self.dset.variables['nav_lat'][:]
             lon = self.dset.variables['nav_lon'][:]
-        except:
+        except KeyError:
+            pass
+        try:
             lat = self.dset.variables['latitude'][:]
             lon = self.dset.variables['longitude'][:]
+        except KeyError:
+            pass
+        try:
+            lat = self.dset.variables['lat'][:]
+            lon = self.dset.variables['lon'][:]
+        except KeyError:
+            pass
 
         # The following code returns 2x1d arrays for the lat-lon mesh
         lat_mesh = np.dstack(np.meshgrid(np.arange(np.shape(lat)[0]),
@@ -121,7 +130,10 @@ class MyNetCDF:
         :param variables: list of variables to extract
         :return: dataframe with time-distributed data
         """
-        idxs, truecoords = self.coords_to_index([lat, lon])
+        try:
+            idxs, truecoords = self.coords_to_index([lat, lon])
+        except:
+            idxs = [lat, lon]
         data = []
         time = []
         for i, date in enumerate(self.dset.variables['time'][:]):
@@ -130,7 +142,7 @@ class MyNetCDF:
 
         df = pd.DataFrame(data=data, columns=variables)
         df['Date'] = time
-        df.set_index(pd.to_datetime(df['Date'], format='%Y-%m-%d'), inplace=True)
+        df.set_index(pd.to_datetime(df['Date'], format='%Y-%m-%d %H:%M'), inplace=True)
         df.drop('Date', inplace=True, axis=1)
 
         return df

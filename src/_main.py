@@ -7,39 +7,44 @@ from tqdm import tqdm
 try:
     import src.dataset as dset
     from src.feature_table import FeatureTable
-    from src.models import regress
     import src.cfg as cfg
     from src.tools import Logger, parser
+    from src.models import Regression
 except ModuleNotFoundError:
     import sys
     import os
-    # abspath = os.path.abspath(os.path.join(os.path.dirname(__file__), 'src'))
-    # sys.path.append('/home/hpc-rosneft/drigo/surrogate/src/')
     import cfg
     import dataset as dset
     from feature_table import FeatureTable
-    from models import regress
     from tools import Logger, parser
+    from models import Regression
 
 parameters = dict(years_train=list(range(2010, 2012)),
                   years_test=[2014, 2015],
                   X_vars=['ice_conc', 'tair', 'votemper'],
                   y_var='thick_cr2smos',
                   bounds=[0, 400, 0, 400],
-                  step=[1, 1]
+                  step=[1, 1],
+                  average=5
                   )
 
 reg_params = dict(model=Lasso(alpha=0.1, max_iter=10000),
                   dx=2,
                   dy=2,
-                  dt=2
+                  dt=2,
+                  enable_pca=False
                   )
+
+filters = dict(pca=None,
+               partial_pca=None
+               )
+
 log = Logger(to_file=False, silent=True)
 
 
 class Main:
 
-    def __init__(self, parameters=parameters, reg_params=reg_params, logger=log):
+    def __init__(self, parameters=parameters, reg_params=reg_params, filters=filters, logger=log):
         """
 
         :param parameters:
@@ -50,7 +55,9 @@ class Main:
         self.log = logger
         self.par = parameters
         self.reg_params = reg_params
-        self.log.start(parameters, reg_params)
+        self.filters = filters
+
+        self.log.start(parameters, reg_params)  # todo add filters
 
         self.mask = np.load(cfg.mask_path)
 
@@ -86,6 +93,10 @@ class Main:
         out = np.empty_like(self.y_arr_test)
         out[:] = np.nan
         self.out = out
+
+        if 'average' in self.par:
+            self.average(self.par['average'])
+
         self.log.info('Data is loaded')
 
     def predict_point(self, point):
@@ -94,25 +105,23 @@ class Main:
         :param point: list or tuple of point coordinates (t, x, y)
         :return: y vector of len (t) as a regression prediction
         """
+
         y_train = self.y_arr_train[:, point[0], point[1]]
         y_test = self.y_arr_test[:, point[0], point[1]]
 
-        X_train = []
-        X_test = []
-        for var_n, var in enumerate(self.par['X_vars']):
-            X = self.ft.gen_matrix(data=self.X_arr_train[var_n], x=point[0], y=point[1])
-            X_train.append(X)
-            X = self.ft.gen_matrix(data=self.X_arr_test[var_n], x=point[0], y=point[1])
-            X_test.append(X)
-
-        X_train = np.hstack([*X_train])
-        X_test = np.hstack([*X_test])
-
-        if np.count_nonzero(~np.isnan(y_train)) == 0:
+        if np.count_nonzero(~np.isnan(y_train)) == 0:  # if point is empty
             pred = np.empty_like(y_test)
             pred[:] = np.nan
         else:
-            mse_val, pred = regress(X_train, y_train, X_test, y_test, model=self.reg_params['model'])
+
+            X_train = self.ft.gen_matrix(data=self.X_arr_train, x=point[0], y=point[1], filters=self.filters)
+            X_test = self.ft.gen_matrix(data=self.X_arr_test, x=point[0], y=point[1], filters=self.filters)
+
+            print('Using {} features'.format(X_train.shape[1]))
+            #regression = Regression(model=self.reg_params['model'], enable_pca=self.filters['enable_pca'])
+            regression = Regression(model=self.reg_params['model'])
+            mse_val, pred = regression.regress(X_train=X_train, y_train=y_train,
+                                               X_test=X_test, y_test=y_test)
 
         return pred
 
@@ -138,7 +147,7 @@ class Main:
             assert type(parallel) is int, 'Number of processes should be int type'
 
             self.log.info('Starting regression using {} cores'.format(parallel))
-            #with Pool(parallel) as pool:
+            # with Pool(parallel) as pool:
             pool = Pool(processes=parallel)
             res = pool.imap(self.predict_point, indices, chunksize=10)
             pool.close()
@@ -200,7 +209,7 @@ class Main:
         if data is None:
             data = self.out
 
-        self.out = dset.interpolate(data=data, method=method)
+        self.out = dset.interpolation(data=data, method=method)
         return self.out
 
     def save(self):  # todo - доделать
@@ -214,14 +223,27 @@ class Main:
         self.log.info('Results were written to file {}'.format(fname))
 
     def get_ft(self, point):
-        X_train = []
-        X_test = []
-        for var_n, var in enumerate(self.par['X_vars']):
-            X = self.ft.gen_matrix(data=self.X_arr_train[var_n], x=point[0], y=point[1])
-            X_train.append(X)
-            X = self.ft.gen_matrix(data=self.X_arr_test[var_n], x=point[0], y=point[1])
-            X_test.append(X)
 
-        X_train = np.hstack([*X_train])
-        X_test = np.hstack([*X_test])
-        return X_train
+        X_train = self.ft.gen_matrix(data=self.X_arr_train, x=point[0], y=point[1], filters=self.filters)
+        X_test = self.ft.gen_matrix(data=self.X_arr_test, x=point[0], y=point[1], filters=self.filters)
+
+        return X_train, X_test
+
+    def average(self, averaging):
+
+        shape = (self.y_arr_train.shape[1] // averaging, self.y_arr_train.shape[2] // averaging)
+        out_dset = []
+
+        for dataset in [self.X_arr_train, self.X_arr_test]:
+            tmp_out = []
+            for arr in dataset:
+                tmp_out.append(dset.rshp(arr, shape))
+            out_dset.append(tmp_out)
+
+        self.X_arr_train, self.X_arr_test = [*out_dset]
+
+        out_dset = []
+        for arr in [self.y_arr_train, self.y_arr_test]:
+            out_dset.append(dset.rshp(arr, shape))
+
+        self.y_arr_train, self.y_arr_test = [*out_dset]

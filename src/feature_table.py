@@ -1,10 +1,9 @@
 import numpy as np
 
-
-# try:
-#    from src.netcdftools import MyNetCDF  # for classical usage
-# except:
-#    from netcdftools import MyNetCDF  # for Jupyter Notebook
+try:
+    from src.filters import MyPCA, Filter
+except ModuleNotFoundError:
+    from filters import MyPCA, Filter
 
 
 class FeatureTable:
@@ -30,17 +29,17 @@ class FeatureTable:
         self.deltas = [dt, dy, dx]
 
         self.matrix = None
+        self.out = None
 
-    def select(self):
+    def select(self, data):
         """
 
         :return:
         """
-        data = self.data
         deltas = self.deltas
         point = self.point
         # TODO - np.clip
-        idx = [[point[0] - deltas[0], point[0] + deltas[0] + 1], # creating index matrix
+        idx = [[point[0] - deltas[0], point[0] + deltas[0] + 1],  # creating index matrix
                [point[1] - deltas[1], point[1] + deltas[1] + 1],
                [point[2] - deltas[2], point[2] + deltas[2] + 1]]
         idx = np.array(idx)
@@ -55,7 +54,7 @@ class FeatureTable:
 
         return output.ravel()
 
-    def gen_matrix(self, data=None, x=None, y=None):
+    def gen_matrix(self, data=None, x=None, y=None, filters=None):
         """
 
         :param data:
@@ -70,16 +69,66 @@ class FeatureTable:
         if data is not None:
             self.data = data
 
-        matrix = []
-        # TODO: do smth if rows are not equal length (for time and bounds)
-        for i in range(np.shape(self.data)[0]):
-            self.point[0] = i
-            selection = self.select()
-            matrix.append(selection)
-        m = np.array(matrix)
+        X_out = []
+        for arr in data:
+            matrix = []
+            for i in range(arr.shape[0]):
+                self.point[0] = i
+                selection = self.select(arr)
+                matrix.append(selection)
+            m = np.array(matrix)
+            m = numpy_fillna(m)
+            X_out.append(m)
 
-        self.matrix = numpy_fillna(m)
-        return self.matrix
+        # X_out = np.hstack([*X_out])
+        self.out = X_out
+        #self.matrix = self.apply_filter(filters=filters)
+        self.apply_filter(filters=filters)
+        return self.out
+
+    def apply_filter(self, filters):
+        # todo - починить пайплайн
+
+        if filters is None:
+            self.out = np.hstack([*self.out])
+        else:
+
+            if 'partial_pca' in filters:
+                out = []
+                print('Applying partial PCA')
+                if filters['partial_pca'] == 'auto':
+                    for chunk in self.out:
+                        m = MyPCA().fit_transform(chunk, fit=True)
+                        out.append(m)
+                else:
+                    for chunk in self.out:
+                        m = MyPCA(n_comp=filters['partial_pca']).fit_transform(chunk, fit=False)
+                        out.append(m)
+                self.out = np.hstack([*out])
+
+            if 'pca' in filters:
+                print('Applying PCA')
+
+                if isinstance(self.out, list):
+                    self.out = np.hstack([*self.out])
+                else:
+                    pass
+
+                if filters['pca'] == 'auto':
+                    self.out = MyPCA().fit_transform(self.out, fit=True)
+                else:
+                    self.out = MyPCA(n_comp=filters['pca']).fit_transform(self.out, fit=False)
+
+            if 'filter_type' in filters:
+                print('Applying {} filter'.format(filters['filter_type']))
+                if isinstance(self.out, list):
+                    self.out = np.hstack([*self.out])
+                else:
+                    pass
+                if 'filter_window' in filters:
+                    self.out = Filter().fit(data=self.out, method=filters['filter_type'], window=filters['filter_window'])
+                else:
+                    self.out = Filter().fit(data=self.out, method=filters['filter_type'])
 
 
 def numpy_fillna(data):
@@ -97,5 +146,7 @@ def numpy_fillna(data):
     out = np.zeros(mask.shape, dtype=np.float)
     out[:] = np.nan
     out[mask] = np.concatenate(data)
+
+
 
     return out
