@@ -7,3 +7,4 @@ log.txt
 /data/processed/
 /data/nemo_assimilate/
 /data/tmp/
+**/*.ipynb_checkpoints/
