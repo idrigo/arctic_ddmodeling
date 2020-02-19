@@ -5,11 +5,10 @@ import scipy.ndimage
 class MyPCA:
     def __init__(self, n_comp=5):
         self.n_comp = n_comp
-
+        self.comps = None
     def fit_transform(self, data, exp_var=99, fit=False):
 
         mask = ~np.isnan(data).any(axis=1)
-
 
         data_clean = data[mask]
 
@@ -18,9 +17,11 @@ class MyPCA:
             pca.fit(data_clean)
             var_pca = np.cumsum(pca.explained_variance_ratio_ * 100)
             self.n_comp = np.argmax(var_pca > exp_var)
-            print('Number of components for {}% explained variance: {}'.format(exp_var, self.n_comp))
 
-        data_transformed = PCA(n_components=self.n_comp).fit_transform(data_clean)
+        pca = PCA(n_components=self.n_comp)
+        data_transformed = pca.fit_transform(data_clean)
+        #print(np.cumsum(pca.explained_variance_ratio_ * 100))
+        self.comps = np.cumsum(pca.explained_variance_ratio_ * 100)
         out = np.empty_like(data[:, :self.n_comp])
         out[mask] = data_transformed
         out[~mask] = np.nan

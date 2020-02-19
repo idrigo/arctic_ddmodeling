@@ -30,15 +30,6 @@ class Plot:
         cmap.set_bad('white')
         m.pcolormesh(xi, yi, data, cmap=cmap, alpha=1, edgecolors='none')
 
-        points_lons = [84,-5,162, -180]
-        points_lats = [78,80,73.6,85]
-        x,y=m(points_lons,points_lats)
-        labels = ['1', '2', '3', '4']
-
-        matplotlib.rcParams.update({'font.size': 22})
-        for label, xpt, ypt in zip(labels, x, y):
-            plt.text(xpt, ypt, label)
-        m.plot(x, y, 'ro', markersize=10)
         return m
 
     def plot_point(self, point, data=None):

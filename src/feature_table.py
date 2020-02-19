@@ -95,20 +95,20 @@ class FeatureTable:
 
             if 'partial_pca' in filters:
                 out = []
-                print('Applying partial PCA')
+                #print('Applying partial PCA')
                 if filters['partial_pca'] == 'auto':
                     for chunk in self.out:
                         m = MyPCA().fit_transform(chunk, fit=True)
                         out.append(m)
                 else:
                     for chunk in self.out:
+
                         m = MyPCA(n_comp=filters['partial_pca']).fit_transform(chunk, fit=False)
                         out.append(m)
                 self.out = np.hstack([*out])
 
             if 'pca' in filters:
                 print('Applying PCA')
-
                 if isinstance(self.out, list):
                     self.out = np.hstack([*self.out])
                 else:

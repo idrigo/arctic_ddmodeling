@@ -9,6 +9,8 @@ except ModuleNotFoundError:
     from filters import MyPCA
 
 warnings.filterwarnings("ignore", category=RuntimeWarning)
+from sklearn.utils.testing import ignore_warnings
+from sklearn.exceptions import ConvergenceWarning
 
 
 class Regression:
@@ -38,6 +40,7 @@ class Regression:
             X = X[~np.isnan(X).any(axis=1)]
             return X
 
+    @ignore_warnings(category=ConvergenceWarning)
     def regress(self, X_train, y_train, X_test, y_test):
         """
         A function to apply regression and measure RMSE accuracy

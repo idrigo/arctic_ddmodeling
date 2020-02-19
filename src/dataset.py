@@ -1,6 +1,7 @@
 import netCDF4 as nc
 import numpy as np
 from scipy import interpolate
+import calendar
 
 try:
     from src import cfg
@@ -21,7 +22,6 @@ def load(variable, year):
             raise Exception('Variable is not found in config file')
 
         path_nc = '{}{}/{}'.format(var['path'], year, var['file_mask'].format(year))
-
         ds = nc.Dataset(path_nc)
         data = ds[variable][:]
 
@@ -36,6 +36,14 @@ def load(variable, year):
             data = np.ma.filled(data, np.nan)
         except:
             pass
+
+        # check if there is not enough timesteps in netcdf and add dummy layer if needed
+        days = 366 if calendar.isleap(year) else 365
+        if data.shape[0] != days:
+            a = np.empty(data.shape[1:3])
+            a[:] = np.nan
+            a = np.moveaxis(np.atleast_3d(a), -1, 0)
+            data = np.append(data, a, axis=0)
 
         np.save(path, data)
         return data
@@ -144,12 +152,13 @@ def rshp(initial_data, shape):
     def rshp2d(data, shape):
         narr = np.pad(data, ((0, shape[0] - data.shape[0] % shape[0]), (0, shape[1] - data.shape[1] % shape[1])),
                   mode='constant',
-                  constant_values=np.NaN)
+                  constant_values=np.nan)
 
         sh = shape[0], narr.shape[0] // shape[0], shape[1], narr.shape[1] // shape[1]
         return narr.reshape(sh).mean(-1).mean(1)
 
     output = np.empty((initial_data.shape[0], shape[0], shape[1]))
+    output[:] = np.nan
     for i in tqdm(range(initial_data.shape[0])):
         output[i, :, :] = rshp2d(initial_data[i, :, :], shape)
 

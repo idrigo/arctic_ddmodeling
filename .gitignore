@@ -1,10 +1,9 @@
 *.nc
-testdata/.DS_Store
 .idea/*
 .ipynb_checkpoints/*
 *.pyc
-data/.DS_Store
-testdata/*
-data/*
 .DS_Store
-src/.ipynb_checkpoints/*
+log.txt
+/data/processed/
+/data/nemo_assimilate/
+/data/tmp/
