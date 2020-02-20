@@ -1,4 +1,5 @@
 import numpy as np
+import logging
 
 try:
     from src.filters import MyPCA, Filter
@@ -80,9 +81,7 @@ class FeatureTable:
             m = numpy_fillna(m)
             X_out.append(m)
 
-        # X_out = np.hstack([*X_out])
         self.out = X_out
-        #self.matrix = self.apply_filter(filters=filters)
         self.apply_filter(filters=filters)
         return self.out
 
@@ -95,7 +94,6 @@ class FeatureTable:
 
             if 'partial_pca' in filters:
                 out = []
-                #print('Applying partial PCA')
                 if filters['partial_pca'] == 'auto':
                     for chunk in self.out:
                         m = MyPCA().fit_transform(chunk, fit=True)
@@ -120,7 +118,7 @@ class FeatureTable:
                     self.out = MyPCA(n_comp=filters['pca']).fit_transform(self.out, fit=False)
 
             if 'filter_type' in filters:
-                print('Applying {} filter'.format(filters['filter_type']))
+                logging.debug('Applying {} filter'.format(filters['filter_type']))
                 if isinstance(self.out, list):
                     self.out = np.hstack([*self.out])
                 else:
@@ -146,7 +144,5 @@ def numpy_fillna(data):
     out = np.zeros(mask.shape, dtype=np.float)
     out[:] = np.nan
     out[mask] = np.concatenate(data)
-
-
 
     return out

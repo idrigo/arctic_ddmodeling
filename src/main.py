@@ -1,15 +1,13 @@
 import numpy as np
-from sklearn.linear_model import Lasso
 from datetime import timedelta
 import time
 from tqdm import tqdm
-from joblib import Parallel, delayed
+import logging
 
 try:
     import src.dataset as dset
     from src.feature_table import FeatureTable
     import src.cfg as cfg
-    from src.tools import Logger, parser
     from src.models import Regression
 except ModuleNotFoundError:
     import sys
@@ -17,35 +15,56 @@ except ModuleNotFoundError:
     import cfg
     import dataset as dset
     from feature_table import FeatureTable
-    from tools import Logger, parser
     from models import Regression
 
-parameters = dict(years_train=list(range(2010, 2012)),
-                  years_test=[2014, 2015],
-                  X_vars=['ice_conc', 'tair', 'votemper'],
-                  y_var='thick_cr2smos',
-                  bounds=[0, 400, 0, 400],
-                  step=[1, 1],
-                  average=5
-                  )
 
-reg_params = dict(model=Lasso(alpha=0.1, max_iter=10000),
-                  dx=2,
-                  dy=2,
-                  dt=2,
-                  enable_pca=False
-                  )
+def init_data(parameters, reg_params):
+    """
 
-filters = dict(pca=None,
-               partial_pca=None
-               )
+    :return:
+    """
+    logging.info('Loading test and train data...')
+    y_arr_train, X_arr_train = dset.load_features(parameters['y_var'],
+                                                  parameters['X_vars'],
+                                                  parameters['years_train'])
 
-log = Logger(to_file=False, silent=True)
+    y_arr_test, X_arr_test = dset.load_features(parameters['y_var'],
+                                                parameters['X_vars'],
+                                                parameters['years_test'])
+
+    logging.info('Data is loaded')
+
+    return y_arr_train, y_arr_test, X_arr_train , X_arr_test
+
+
+def predict_point(point, y_arr_train, y_arr_test, X_arr_train , X_arr_test):
+    """
+    Method to fit a regression on one point, given as (t, x, y)
+    :param point: list or tuple of point coordinates (t, x, y)
+    :return: y vector of len (t) as a regression prediction
+    """
+
+    y_train = y_arr_train[:, point[0], point[1]]
+    y_test = y_arr_test[:, point[0], point[1]]
+
+    if np.count_nonzero(~np.isnan(y_train)) == 0:  # if point is empty
+        pred = np.empty_like(y_test)
+        pred[:] = np.nan
+    else:
+        X_train = ft.gen_matrix(data=X_arr_train, x=point[0], y=point[1], filters=filters)
+        X_test = ft.gen_matrix(data=X_arr_test, x=point[0], y=point[1], filters=filters)
+
+        regression = Regression(model=self.reg_params['model'])
+        mse_val, pred = regression.regress(X_train=X_train, y_train=y_train,
+                                           X_test=X_test, y_test=y_test)
+        coeff = regression.model.coef_
+
+    return pred
 
 
 class Main:
 
-    def __init__(self, parameters=parameters, reg_params=reg_params, filters=filters, logger=log):
+    def __init__(self, parameters, reg_params, filters):
         """
 
         :param parameters:
@@ -53,12 +72,9 @@ class Main:
         :param logger:
         """
 
-        self.log = logger
         self.par = parameters
         self.reg_params = reg_params
         self.filters = filters
-
-        self.log.start(parameters, reg_params)  # todo add filters
 
         self.mask = np.load(cfg.mask_path)
 
@@ -80,7 +96,7 @@ class Main:
 
         :return:
         """
-        self.log.info('Loading test and train data...')
+        logging.info('Loading test and train data...')
 
         self.y_arr_train, self.X_arr_train = dset.load_features(self.par['y_var'],
                                                                 self.par['X_vars'],
@@ -97,10 +113,7 @@ class Main:
         out[:] = np.nan
         self.out = out
 
-        if 'average' in self.par:
-            self.average(self.par['average'])
-
-        self.log.info('Data is loaded')
+        logging.info('Data is loaded')
 
     def predict_point(self, point):
         """
@@ -116,21 +129,17 @@ class Main:
             pred = np.empty_like(y_test)
             pred[:] = np.nan
         else:
-
             X_train = self.ft.gen_matrix(data=self.X_arr_train, x=point[0], y=point[1], filters=self.filters)
             X_test = self.ft.gen_matrix(data=self.X_arr_test, x=point[0], y=point[1], filters=self.filters)
 
-            # regression = Regression(model=self.reg_params['model'], enable_pca=self.filters['enable_pca'])
-            # self.log.info('Regression using {} features'.format(X_train.shape[1]))
             regression = Regression(model=self.reg_params['model'])
             mse_val, pred = regression.regress(X_train=X_train, y_train=y_train,
                                                X_test=X_test, y_test=y_test)
             self.coeff = regression.model.coef_
 
-
         return pred
 
-    def predict_area(self, bounds=None, step=None, parallel=None, indices=None):
+    def predict_area(self, bounds=None, step=None, indices=None):
         """
 
         :param bounds:
@@ -145,23 +154,14 @@ class Main:
 
         if indices is None: indices = self.gen_indices(bounds, step)
         start = time.time()
-        self.log.info('{} points'.format(len(indices)))
-        if parallel:
-            from multiprocessing import Pool
-            # TODO - настроить параллелизм
-            #            assert type(parallel) is int, 'Number of processes should be int type'
+        logging.info('{} points'.format(len(indices)))
+        logging.info('Starting regression on a single core')
 
-            self.log.info('Starting regression using {} cores'.format(parallel))
-
-            res = Parallel(n_jobs=2)(delayed(self.predict_point)(point) for point in tqdm(indices))
-
-        else:
-            self.log.info('Starting regression on a single core')
-            res = []
-            coeffs = []
-            for idx, point in tqdm(enumerate(indices), total=len(indices)):
-                res.append(self.predict_point(point))
-                coeffs.append(self.coeff)
+        res = []
+        coeffs = []
+        for idx, point in tqdm(enumerate(indices), total=len(indices)):
+            res.append(self.predict_point(point))
+            coeffs.append(self.coeff)
 
         self.out = self.restore_array(res, indices)
         coeff_len = next(len(item) for item in coeffs if item is not None)
@@ -173,7 +173,7 @@ class Main:
             self.coeffcients_out[:, i, j] = coeffs[idx]
         elapsed = (time.time() - start)
 
-        self.log.info('Processed {} points in {} ({} points/sec)'.format(len(indices),
+        logging.info('Processed {} points in {} ({} points/sec)'.format(len(indices),
                                                                          str(timedelta(seconds=elapsed)),
                                                                          round(len(indices) / elapsed), 5))
         return self.out
@@ -199,7 +199,7 @@ class Main:
 
     def restore_array(self, array_in, indices):
 
-        self.log.info('Constructing output array')
+        logging.info('Constructing output array')
         for idx, val in enumerate(indices):
             (i, j) = indices[idx]
             self.out[:, i, j] = array_in[idx]
@@ -216,7 +216,7 @@ class Main:
 
     def interpolate(self, method='nearest'):
 
-        log.info('Interpolating data using {} method'.format(method))
+        logging.info('Interpolating data using {} method'.format(method))
 
         self.out = dset.interpolation(data=self.out, method=method)
         self.coeffcients_out = dset.interpolation(data=self.coeffcients_out, method=method)
@@ -226,13 +226,13 @@ class Main:
         import datetime
         import os
         time_now = datetime.datetime.now().strftime("%m%d_%H%M")
-        self.log.info('Saving output to file')
+        logging.info('Saving output to file')
 
         path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'data', 'output'))
         self.out.dump(os.path.join(path, 'res_{}.npy'.format(time_now)))
 
         self.coeffcients_out.dump((os.path.join(path, 'coeffs_{}.npy'.format(time_now))))
-        self.log.info('Results were written to file {}')
+        logging.info('Results were written to file {}')
 
     def get_ft(self, point):
 
@@ -240,22 +240,3 @@ class Main:
         X_test = self.ft.gen_matrix(data=self.X_arr_test, x=point[0], y=point[1], filters=self.filters)
 
         return X_train, X_test
-
-    def average(self, averaging):
-
-        shape = (self.y_arr_train.shape[1] // averaging, self.y_arr_train.shape[2] // averaging)
-        out_dset = []
-
-        for dataset in [self.X_arr_train, self.X_arr_test]:
-            tmp_out = []
-            for arr in dataset:
-                tmp_out.append(dset.rshp(arr, shape))
-            out_dset.append(tmp_out)
-
-        self.X_arr_train, self.X_arr_test = [*out_dset]
-
-        out_dset = []
-        for arr in [self.y_arr_train, self.y_arr_test]:
-            out_dset.append(dset.rshp(arr, shape))
-
-        self.y_arr_train, self.y_arr_test = [*out_dset]

@@ -1,11 +1,13 @@
 from sklearn.linear_model import Lasso
-try:
-    from src.tools import Logger, parser
-    from src.main import Main
+import logging
+import numpy as np
 
+try:
+    from src.main import Main
+    import src.dataset as dset
 except ModuleNotFoundError:
-    from tools import Logger, parser
     from main import Main
+    import dataset as dset
 
 parameters = dict(years_train=list(range(2010, 2014)),
                   years_test=[2014, 2015],
@@ -22,21 +24,25 @@ reg_params = dict(model=Lasso(alpha=0.1, max_iter=1000),
                   )
 filters = dict(partial_pca=5)
 
+logging.basicConfig(format='%(asctime)s - %(message)s',
+                    level=logging.INFO)
+logging.getLogger('suds').setLevel(logging.INFO)  # set INFO level for all modules
 
-def main(parameters, reg_params):
-    #indices = np.load('/Users/drigo/ITMO/_disser/surrogate/data/ice_mask_idx.npy')
-    #indices = indices[26164:]
-    args = parser()
-    log = Logger(to_file=True, silent=False)
-
-    m = Main(parameters=parameters, reg_params=reg_params, logger=log, filters=filters)
-    m.predict_area()
-    m.apply_mask()
-    #m.interpolate()
-    m.save()
-
-    del m
+#indices = np.load('/Users/drigo/ITMO/_disser/surrogate/data/ice_mask_idx.npy')
+#indices = indices[26164:]
 
 
-if __name__ == '__main__':
-    main(parameters, reg_params)
+if 'average' in self.par:
+    self.average(self.par['average'])
+
+logging.info('Data is loaded')
+
+m = Main(parameters=parameters, reg_params=reg_params, filters=filters)
+m.predict_area()
+m.apply_mask()
+#m.interpolate()
+m.save()
+
+del m
+
+
