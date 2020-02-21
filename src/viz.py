@@ -25,7 +25,6 @@ class Plot:
         m.fillcontinents()
         m.drawmapboundary(fill_color='white')
         m.drawcountries()
-        # cmp = cm.get_cmap('rainbow', 11)
         cmap = plt.get_cmap('rainbow')
         cmap.set_bad('white')
         m.pcolormesh(xi, yi, data, cmap=cmap, alpha=1, edgecolors='none')

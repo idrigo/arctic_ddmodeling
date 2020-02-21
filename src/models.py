@@ -12,6 +12,29 @@ warnings.filterwarnings("ignore", category=RuntimeWarning)
 from sklearn.utils.testing import ignore_warnings
 from sklearn.exceptions import ConvergenceWarning
 
+def predict_point(point, y_arr_train, y_arr_test, X_arr_train , X_arr_test):
+    """
+    Method to fit a regression on one point, given as (t, x, y)
+    :param point: list or tuple of point coordinates (t, x, y)
+    :return: y vector of len (t) as a regression prediction
+    """
+
+    y_train = y_arr_train[:, point[0], point[1]]
+    y_test = y_arr_test[:, point[0], point[1]]
+
+    if np.count_nonzero(~np.isnan(y_train)) == 0:  # if point is empty
+        pred = np.empty_like(y_test)
+        pred[:] = np.nan
+    else:
+        X_train = ft.gen_matrix(data=X_arr_train, x=point[0], y=point[1], filters=filters)
+        X_test = ft.gen_matrix(data=X_arr_test, x=point[0], y=point[1], filters=filters)
+
+        regression = Regression(model=self.reg_params['model'])
+        mse_val, pred = regression.regress(X_train=X_train, y_train=y_train,
+                                           X_test=X_test, y_test=y_test)
+        coeff = regression.model.coef_
+
+    return pred
 
 class Regression:
     def __init__(self, model):

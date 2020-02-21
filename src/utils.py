@@ -1,8 +1,31 @@
+import logging
+
 import netCDF4 as nc
 import netcdftime
-import pandas as pd
 import numpy as np
+import pandas as pd
 from scipy import spatial
+
+
+
+def iterate3d(func):
+    # todo - доделать обертку
+    def wrapper(data):
+        from tqdm import tqdm
+
+        assert len(np.shape(data)) == 3, 'Input array should be 3D'
+        x = np.arange(0, data.shape[2])
+        y = np.arange(0, data.shape[1])
+        xx, yy = np.meshgrid(x, y)
+
+        output = np.empty_like(data)
+        for i in tqdm(range(data.shape[0])):
+            try:
+                output[i, :, :] = func(data[i, :, :])
+            except ValueError:  # TODO - разобраться что не так
+                pass
+
+        return output
 
 
 class MyNetCDF:
@@ -204,3 +227,22 @@ class MyNetCDF:
                            'y': np.indices(np.shape(self.data))[2].ravel(),
                            self.variable: self.vector})
         return df
+
+
+def numpy_fillna(data):
+    """
+    Function to make 2D numpy array from array of unequal length arrays filling with nans
+    :param data: input array with rows of unequal lengths
+    :return: 2D numpy array
+    """
+    lens = np.array([len(i) for i in data])
+
+    # Mask of valid places in each row
+    mask = np.arange(lens.max()) < lens[:, None]
+
+    # Setup output array and put elements from data into masked positions
+    out = np.zeros(mask.shape, dtype=np.float)
+    out[:] = np.nan
+    out[mask] = np.concatenate(data)
+
+    return out

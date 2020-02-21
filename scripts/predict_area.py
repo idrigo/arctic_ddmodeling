@@ -8,7 +8,7 @@ from tqdm import tqdm
 
 try:
     from src.main import Main
-    import src.dataset as dset
+    import src.data as dset
 except ModuleNotFoundError:
     from main import Main
     import dataset as dset
@@ -31,6 +31,17 @@ filters = dict(partial_pca=5)
 logging.basicConfig(format='%(asctime)s - %(message)s',
                     level=logging.INFO)
 logging.getLogger('suds').setLevel(logging.INFO)  # set INFO level for all modules
+
+logging.info('Loading test and train data...')
+y_arr_train, X_arr_train = dset.load_features(parameters['y_var'],
+                                              parameters['X_vars'],
+                                              parameters['years_train'])
+
+y_arr_test, X_arr_test = dset.load_features(parameters['y_var'],
+                                            parameters['X_vars'],
+                                            parameters['years_test'])
+
+logging.info('Data is loaded')
 
 
 def predict_area(self, bounds=None, step=None, indices=None):
@@ -57,7 +68,7 @@ def predict_area(self, bounds=None, step=None, indices=None):
         res.append(self.predict_point(point))
         coeffs.append(self.coeff)
 
-    out = restore_array(res, indices)
+    out = dset.restore_array(res, indices)
     coeff_len = next(len(item) for item in coeffs if item is not None)
     coeffcients_out = np.empty((coeff_len, np.shape(self.out)[1], np.shape(self.out)[2]))
     coeffcients_out[:] = np.nan
@@ -71,62 +82,3 @@ def predict_area(self, bounds=None, step=None, indices=None):
                                                                     str(timedelta(seconds=elapsed)),
                                                                     round(len(indices) / elapsed), 5))
     return out
-
-
-def gen_indices(self, bounds, step):
-    """
-    :param bounds:
-    :param step:
-    :return:
-    """
-    from itertools import product
-    i = range(bounds[0],
-              bounds[1],
-              step[0])
-
-    j = range(bounds[2],
-              bounds[3],
-              step[1])
-
-    idx = list(product(i, j))
-    idx[:] = [tup for tup in idx if self.mask[tup] == False]
-    return idx
-
-
-def restore_array(self, array_in, indices):
-    logging.info('Constructing output array')
-    for idx, val in enumerate(indices):
-        (i, j) = indices[idx]
-        self.out[:, i, j] = array_in[idx]
-
-    return self.out
-
-
-def apply_mask(self, array=None):
-    if array is None:
-        array = self.out
-
-    self.out = dset.mask3d(array=array, mask=self.mask)
-    self.coeffcients_out = dset.mask3d(array=self.coeffcients_out, mask=self.mask)
-    return self.out
-
-
-def interpolate(self, method='nearest'):
-    logging.info('Interpolating data using {} method'.format(method))
-
-    self.out = dset.interpolation(data=self.out, method=method)
-    self.coeffcients_out = dset.interpolation(data=self.coeffcients_out, method=method)
-    return self.out
-
-
-def save(self):  # todo - доделать
-    import datetime
-    import os
-    time_now = datetime.datetime.now().strftime("%m%d_%H%M")
-    logging.info('Saving output to file')
-
-    path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'data', 'output'))
-    self.out.dump(os.path.join(path, 'res_{}.npy'.format(time_now)))
-
-    self.coeffcients_out.dump((os.path.join(path, 'coeffs_{}.npy'.format(time_now))))
-    logging.info('Results were written to file {}')

@@ -4,7 +4,7 @@ import numpy as np
 
 try:
     from src.main import Main
-    import src.dataset as dset
+    import src.data as dset
 except ModuleNotFoundError:
     from main import Main
     import dataset as dset
