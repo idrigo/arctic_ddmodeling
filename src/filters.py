@@ -25,7 +25,6 @@ class MyPCA:
 
         pca = PCA(n_components=self.n_comp)
         data_transformed = pca.fit_transform(data_clean)
-        #print(np.cumsum(pca.explained_variance_ratio_ * 100))
         self.comps = np.cumsum(pca.explained_variance_ratio_ * 100)
         out = np.empty_like(data[:, :self.n_comp])
         out[mask] = data_transformed

@@ -1,4 +1,9 @@
-def gen_indices(bounds, step):
+import logging
+import numpy as np
+from scipy.interpolate import interpolate
+
+
+def gen_indices(bounds, step, mask):
     """
     :param bounds:
     :param step:
@@ -17,27 +22,6 @@ def gen_indices(bounds, step):
     idx[:] = [tup for tup in idx if mask[tup] == False]
     return idx
 
-def mask3d(array, mask):
-    """
-    Args:
-        array:
-        mask:
-    """
-    array[np.isnan(array)] = 0
-    mask = np.repeat(mask[None, ...], array.shape[0], axis=0)
-    array = np.ma.masked_array(array, mask=mask)
-    return array
-
-
-def apply_mask(array=None):
-    if array is None:
-        array = out
-
-    out = mask3d(array=array, mask=self.mask)
-    coeffcients_out = mask3d(array=coeffcients_out, mask=mask)
-    return self.out
-
- TODO сделать декоратор чтобы оборачивать интерполяции по 2d
 # TODO cleanup code
 def regrid(initial_data, grid_step):
     """
@@ -63,7 +47,7 @@ def regrid(initial_data, grid_step):
                                    initial_data.ravel(),
                                    (xx1, yy1), method='linear')
         return GD1
-    output = np.empty((initial_data.shape[0], xx1.shape[0], xx1.shape[1]))
+    output = np.empty(( initial_data.shape[0], xx1.shape[0], xx1.shape[1]))
     for i in tqdm(range(initial_data.shape[0])):
         try:
             output[i, :, :] = interp2d(initial_data[i, :, :], xx, yy, xx1, yy1)
@@ -95,21 +79,14 @@ def rshp(initial_data, shape):
     return output
 
 
-def restore_array(self, array_in, indices):
+def restore_array(array_in, indices):
     logging.info('Constructing output array')
     for idx, val in enumerate(indices):
         (i, j) = indices[idx]
-        self.out[:, i, j] = array_in[idx]
+        out[:, i, j] = array_in[idx]
 
-    return self.out
-
-
-def interpolate(self, method='nearest'):
-    logging.info('Interpolating data using {} method'.format(method))
-
-    out = interpolation(data=self.out, method=method)
-    coeffcients_out = interpolation(data=coeffcients_out, method=method)
     return out
+
 
 def interpolation(data, method):
     """

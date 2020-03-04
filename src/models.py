@@ -3,16 +3,21 @@ import numpy as np
 from sklearn.metrics import mean_squared_error as mse
 import warnings
 
-try:
-    from src.filters import MyPCA
-except ModuleNotFoundError:
-    from filters import MyPCA
-
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 from sklearn.utils.testing import ignore_warnings
 from sklearn.exceptions import ConvergenceWarning
 
-def predict_point(point, y_arr_train, y_arr_test, X_arr_train , X_arr_test):
+def init_model(model_name):
+    if model_name == 'lasso':
+        from sklearn.linear_model import Lasso
+        model = Lasso(alpha=0.1, max_iter=1000)
+        return model
+    elif model_name =='lstm':
+       pass
+    else:
+        raise ValueError ("Model name not found")
+
+def predict_point(point, y_arr_train, y_arr_test, X_train, X_test, model):
     """
     Method to fit a regression on one point, given as (t, x, y)
     :param point: list or tuple of point coordinates (t, x, y)
@@ -26,44 +31,15 @@ def predict_point(point, y_arr_train, y_arr_test, X_arr_train , X_arr_test):
         pred = np.empty_like(y_test)
         pred[:] = np.nan
     else:
-        X_train = ft.gen_matrix(data=X_arr_train, x=point[0], y=point[1], filters=filters)
-        X_test = ft.gen_matrix(data=X_arr_test, x=point[0], y=point[1], filters=filters)
-
-        regression = Regression(model=self.reg_params['model'])
-        mse_val, pred = regression.regress(X_train=X_train, y_train=y_train,
-                                           X_test=X_test, y_test=y_test)
-        coeff = regression.model.coef_
-
-    return pred
-
-class Regression:
-    def __init__(self, model):
-        self.X_train = None
-        self.X_test = None
-
-        self.y_train = None
-        self.y_test = None
-
-        self.model = model
-
-    def regress(self, X_train, y_train, X_test, y_test):
-        """
-        A function to apply regression and measure RMSE accuracy
-        :param X_train: train set
-        :param y_train: train target variable
-        :param X_test: test set
-        :param y_test: test target variable
-        :return:
-        """
 
         mask = ~np.isnan(X_test).any(axis=1)
-        y_clean, X_train_clean = self.clean_data(X=X_train, y=y_train)
+        y_clean, X_train_clean = clean_data(X=X_train, y=y_train)
 
         X_test_clean = X_test[mask]
 
-        self.model.fit(X=X_train_clean, y=y_clean)
+        model.fit(X=X_train_clean, y=y_clean)
 
-        pred = self.model.predict(X_test_clean)
+        pred = model.predict(X_test_clean)
 
         pred_out = np.empty_like(y_test)
         pred_out[mask] = pred
@@ -78,7 +54,8 @@ class Regression:
 
         return mse_val, pred_out
 
-def clean_data(self, X, y=None):
+
+def clean_data(X, y=None):
     """
     Cleans out rows with NaN from train set
     :param X:
