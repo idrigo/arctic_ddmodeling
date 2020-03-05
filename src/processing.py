@@ -79,13 +79,13 @@ def rshp(initial_data, shape):
     return output
 
 
-def restore_array(array_in, indices):
+def restore_array(template, array_in, indices):
     logging.info('Constructing output array')
     for idx, val in enumerate(indices):
         (i, j) = indices[idx]
-        out[:, i, j] = array_in[idx]
+        template[:, i, j] = array_in[idx]
 
-    return out
+    return template
 
 
 def interpolation(data, method):

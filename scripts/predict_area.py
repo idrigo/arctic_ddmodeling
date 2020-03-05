@@ -22,12 +22,13 @@ parameters = dict(years_train=list(range(2010, 2014)),
                   )
 """
 parameters = dict(years_train=list(range(2010, 2012)),
-                  years_test=[2014, 2015],
+                  years_test=[2014],
                   X_vars=['icethic_cea', 'vosaline', 'radlw'],
                   y_var='thick_cr2smos',
                   bounds=[0, 400, 0, 400],
                   step=[20, 20]
                   )
+
 reg_params = dict(model=Lasso(alpha=0.1, max_iter=1000),
                   dx=5,
                   dy=5,
@@ -66,9 +67,11 @@ res = []
 for idx, point in tqdm(enumerate(indices), total=len(indices)):
     X_train = ft.gen_matrix(data=X_arr_train, x=point[0], y=point[1], filters=filters)
     X_test = ft.gen_matrix(data=X_arr_test, x=point[0], y=point[1], filters=filters)
-    res.append(models.predict_point(point, y_arr_train, y_arr_test, X_arr_train, X_arr_test, model))
+    res.append(models.predict_point(point, y_arr_train, y_arr_test, X_train, X_test, model))
 
-out = processing.restore_array(res, indices)
+template = np.empty_like(y_arr_test)
+template[:] = np.nan
+out = processing.restore_array(template=template, array_in=res, indices=indices)
 
 for idx, val in enumerate(indices):
     (i, j) = indices[idx]

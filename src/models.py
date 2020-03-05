@@ -52,7 +52,7 @@ def predict_point(point, y_arr_train, y_arr_test, X_train, X_test, model):
         except ValueError:
             mse_val = -9999
 
-        return mse_val, pred_out
+        return pred_out
 
 
 def clean_data(X, y=None):
