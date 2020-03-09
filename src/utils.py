@@ -246,3 +246,4 @@ def numpy_fillna(data):
     out[mask] = np.concatenate(data)
 
     return out
+

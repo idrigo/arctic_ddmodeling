@@ -3,11 +3,10 @@ import time
 from datetime import timedelta
 
 import numpy as np
-from sklearn.linear_model import Lasso
 from tqdm import tqdm
 
 import src.cfg as cfg
-import src.data as dset
+import src.data as data
 import src.models as models
 import src.processing as processing
 import src.filters as fltr
@@ -29,7 +28,7 @@ parameters = dict(years_train=list(range(2010, 2012)),
                   step=[20, 20]
                   )
 
-reg_params = dict(model=Lasso(alpha=0.1, max_iter=1000),
+reg_params = dict(model='lasso',
                   dx=5,
                   dy=5,
                   dt=5
@@ -41,11 +40,11 @@ logging.basicConfig(format='%(asctime)s - %(message)s',
 logging.getLogger('suds').setLevel(logging.INFO)  # set INFO level for all modules
 
 logging.info('Loading test and train data...')
-y_arr_train, X_arr_train = dset.load_features(parameters['y_var'],
+y_arr_train, X_arr_train = data.load_features(parameters['y_var'],
                                               parameters['X_vars'],
                                               parameters['years_train'])
 
-y_arr_test, X_arr_test = dset.load_features(parameters['y_var'],
+y_arr_test, X_arr_test = data.load_features(parameters['y_var'],
                                             parameters['X_vars'],
                                             parameters['years_test'])
 mask = np.load(cfg.mask_path)
@@ -62,12 +61,16 @@ ft = fltr.FeatureTable(dx=reg_params['dx'],
                        dy=reg_params['dy'],
                        dt=reg_params['dt'])
 
-model = models.init_model('lasso')
+model = models.init_model(reg_params['model'])
+
 res = []
 for idx, point in tqdm(enumerate(indices), total=len(indices)):
+    y_train = y_arr_train[:, point[0], point[1]]
+    y_test = y_arr_test[:, point[0], point[1]]
     X_train = ft.gen_matrix(data=X_arr_train, x=point[0], y=point[1], filters=filters)
     X_test = ft.gen_matrix(data=X_arr_test, x=point[0], y=point[1], filters=filters)
-    res.append(models.predict_point(point, y_arr_train, y_arr_test, X_train, X_test, model))
+
+    res.append(models.predict_point(point, y_train, y_test, X_train, X_test, model))
 
 template = np.empty_like(y_arr_test)
 template[:] = np.nan
