@@ -65,12 +65,15 @@ model = models.init_model(reg_params['model'])
 
 res = []
 for idx, point in tqdm(enumerate(indices), total=len(indices)):
+
     y_train = y_arr_train[:, point[0], point[1]]
     y_test = y_arr_test[:, point[0], point[1]]
     X_train = ft.gen_matrix(data=X_arr_train, x=point[0], y=point[1], filters=filters)
     X_test = ft.gen_matrix(data=X_arr_test, x=point[0], y=point[1], filters=filters)
-
-    res.append(models.predict_point(point, y_train, y_test, X_train, X_test, model))
+    if idx == 0:
+        lstm = models.MyLSTM()
+        lstm.fit(X_train, y_train)
+    res.append(lstm.predict(X_test))
 
 template = np.empty_like(y_arr_test)
 template[:] = np.nan

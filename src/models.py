@@ -17,10 +17,12 @@ class MyLasso:
         self.model = Lasso(alpha=0.1, max_iter=1000)
 
         return
-    def fit(self,X_train, y_train):
-        y_clean, X_train_clean = clean_data(X=X_train, y=y_train)
 
+    def fit(self, X_train, y_train):
+
+        y_clean, X_train_clean = clean_data(X=X_train, y=y_train)
         self.model.fit(X=X_train_clean, y=y_clean)
+
     def predict(self, X_test, y_test):
         mask = ~np.isnan(X_test).any(axis=1)
         X_test_clean = X_test[mask]
@@ -35,37 +37,39 @@ class MyLasso:
 
 
 def reshape2d(array):
-    return array.reshape((array.shape[0], 1, array.shape[1]))
+    out = array.reshape((array.shape[0], 1, array.shape[1]))
+    return out
 
 
 class MyLSTM:
-    def __init__(self, n_neurons=50):
+    def __init__(self):
         self.history = None
+        self.model = None
+
+    def fit(self, X_train, y_train, parameters=None):
+        y_train, X_train = clean_data(X=X_train, y=y_train)
+        X_train = reshape2d(X_train)
 
         self.model = Sequential()
-        # TODO - подумать как лучше сделать input_shape
         self.model.add(LSTM(20, input_shape=(X_train.shape[1], X_train.shape[2]), return_sequences=False))
         self.model.add(Dense(1))
-        self.model.compile(loss='mean_squared_error', optimizer='adam')
-
-    def fit(self, X_train, y_train):
-        X_train = reshape2d(X_train)
-        # TODO вынести в конфиг гиперпараметры
+        self.model.compile(loss='mae', optimizer='adam')
+        # TODO - параметры через конфиг
         self.history = self.model.fit(X_train, y_train, epochs=70, batch_size=30, verbose=0, shuffle=False)
 
-    def predict(self, X_test, y_test):
-        X_test = reshape2d(X_test)
+    def predict(self, X_test):
 
         mask = ~np.isnan(X_test).any(axis=1)
+        pred_out = np.empty((X_test.shape[0]))
+
         X_test = X_test[mask]
-        pred_out = np.empty_like(y_test)
+        X_test = reshape2d(X_test)
 
         pred = self.model.predict(X_test).ravel()
         pred_out[mask] = pred
         pred_out[~mask] = np.nan
         pred_out[pred_out < 0] = 0
         return pred_out
-
 
 
 def predict_point(y_train, y_test, X_train, X_test, model):
