@@ -61,8 +61,6 @@ ft = fltr.FeatureTable(dx=reg_params['dx'],
                        dy=reg_params['dy'],
                        dt=reg_params['dt'])
 
-model = models.init_model(reg_params['model'])
-
 res = []
 for idx, point in tqdm(enumerate(indices), total=len(indices)):
 

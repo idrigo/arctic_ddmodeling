@@ -8,8 +8,7 @@ from sklearn.utils.testing import ignore_warnings
 from sklearn.exceptions import ConvergenceWarning
 
 from keras.models import Sequential
-from keras.layers import Dense
-from keras.layers import LSTM
+from keras.layers import Dense, LSTM, Dropout
 
 
 class MyLasso:
@@ -19,7 +18,6 @@ class MyLasso:
         return
 
     def fit(self, X_train, y_train):
-
         y_clean, X_train_clean = clean_data(X=X_train, y=y_train)
         self.model.fit(X=X_train_clean, y=y_clean)
 
@@ -51,14 +49,23 @@ class MyLSTM:
         X_train = reshape2d(X_train)
 
         self.model = Sequential()
-        self.model.add(LSTM(20, input_shape=(X_train.shape[1], X_train.shape[2]), return_sequences=False))
+        if not parameters:
+            parameters = dict(n_neurons=20,
+                              epochs=70,
+                              batch_size=30,
+                              loss='mae')
+
+        self.model.add(LSTM(parameters['n_neurons'],
+                            input_shape=(X_train.shape[1], X_train.shape[2]),
+                            return_sequences=False))
         self.model.add(Dense(1))
-        self.model.compile(loss='mae', optimizer='adam')
-        # TODO - параметры через конфиг
-        self.history = self.model.fit(X_train, y_train, epochs=70, batch_size=30, verbose=0, shuffle=False)
+        self.model.compile(loss=parameters['loss'], optimizer='adam')
+        self.history = self.model.fit(X_train, y_train,
+                                      epochs=parameters['epochs'],
+                                      batch_size=parameters['batch_size'],
+                                      verbose=2, shuffle=False)
 
     def predict(self, X_test):
-
         mask = ~np.isnan(X_test).any(axis=1)
         pred_out = np.empty((X_test.shape[0]))
 
