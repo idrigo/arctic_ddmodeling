@@ -2,6 +2,7 @@ import logging
 
 import numpy as np
 from sklearn.decomposition import PCA
+from sklearn.preprocessing import StandardScaler
 import scipy.ndimage
 from src.utils import numpy_fillna
 
@@ -108,7 +109,7 @@ class FeatureTable:
 
         return output.ravel()
 
-    def gen_matrix(self, data=None, x=None, y=None, filters=None):
+    def gen_matrix(self, data=None, x=None, y=None, filters=None, scale=False):
         """
 
         :param data:
@@ -132,9 +133,11 @@ class FeatureTable:
                 matrix.append(selection)
             m = np.array(matrix)
             m = numpy_fillna(m)
+
             X_out.append(m)
 
         self.out = X_out
+
         self.apply_filter(filters=filters)
         return self.out
 

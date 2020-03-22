@@ -9,6 +9,7 @@ from sklearn.exceptions import ConvergenceWarning
 
 from keras.models import Sequential
 from keras.layers import Dense, LSTM, Dropout
+from keras import backend as K
 
 
 class MyLasso:
@@ -39,6 +40,9 @@ def reshape2d(array):
     return out
 
 
+def root_mean_squared_error(y_true, y_pred):
+    return K.sqrt(K.mean(K.square(y_pred - y_true)))
+
 class MyLSTM:
     def __init__(self):
         self.history = None
@@ -57,13 +61,21 @@ class MyLSTM:
 
         self.model.add(LSTM(parameters['n_neurons'],
                             input_shape=(X_train.shape[1], X_train.shape[2]),
-                            return_sequences=False))
+                            return_sequences=True))
+        self.model.add(Dropout(0.3))
+        self.model.add(LSTM(parameters['n_neurons'], return_sequences=True))
+        self.model.add(Dropout(0.3))
+        self.model.add(LSTM(parameters['n_neurons']))
+        self.model.add(Dropout(0.3))
         self.model.add(Dense(1))
+
         self.model.compile(loss=parameters['loss'], optimizer='adam')
+        #self.model.compile(loss=root_mean_squared_error, optimizer='adam')
+        print(self.model.summary())
         self.history = self.model.fit(X_train, y_train,
                                       epochs=parameters['epochs'],
                                       batch_size=parameters['batch_size'],
-                                      verbose=2, shuffle=False)
+                                      verbose=0, shuffle=False)
 
     def predict(self, X_test):
         mask = ~np.isnan(X_test).any(axis=1)

@@ -47,7 +47,7 @@ y_arr_train, X_arr_train = data.load_features(parameters['y_var'],
 y_arr_test, X_arr_test = data.load_features(parameters['y_var'],
                                             parameters['X_vars'],
                                             parameters['years_test'])
-mask = np.load(cfg.mask_path)
+mask = np.load(cfg.mask_path, allow_pickle=True)
 logging.info('Data is loaded')
 
 bounds = parameters['bounds']

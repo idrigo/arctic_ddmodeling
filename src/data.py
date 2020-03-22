@@ -15,7 +15,7 @@ def load(variable, year):
     path = '{}/{}_{}.npy'.format(abspath, variable, year)
 
     try:
-        data = np.load(path)
+        data = np.load(path, allow_pickle=True)
         return data
     except FileNotFoundError:
         var = next((item for item in cfg.var_dict if item['variable'] == variable), None)

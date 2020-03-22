@@ -32,6 +32,10 @@ if local:
                  'path': '/Volumes/Drigo_HDD/arctic/output_yearly/',
                  'file_mask': 'ice_grid_y{}.nc'},
 
+                {'variable': 'icethic_cea_LASSO',  # model ice thickness with LASSO assimilation
+                 'path': '/Volumes/Drigo_HDD/arctic/output_yearly/',
+                 'file_mask': 'ice_grid_y{}_LASSO.nc'},
+
                 {'variable': 'snowthic_cea',  # model snow thickness
                  'path': '/Volumes/Drigo_HDD/arctic/output_yearly/',
                  'file_mask': 'ice_grid_y{}.nc'},
@@ -46,7 +50,11 @@ if local:
 
                 {'variable': 'sossheig',  # model SSH
                  'path': '/Volumes/Drigo_HDD/arctic/output_yearly/',
-                 'file_mask': 'T_grid_y{}.nc'}
+                 'file_mask': 'T_grid_y{}.nc'},
+
+                {'variable': 'hice',  # TOPAZ reanalysis ice height
+                 'path': '/Volumes/Drigo_HDD/arctic/output_yearly/',
+                 'file_mask': 'TOPAZ_y{}.nc'}
                 ]
     mask_path = '/Volumes/Drigo_HDD/arctic/mask.npy'
     processed_data_path = '/Volumes/Drigo_HDD/arctic/data_numpy_dump/'

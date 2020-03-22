@@ -10,8 +10,8 @@ class Plot:
     def __init__(self, data=None):
         path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'data'))
         self.data = data
-        self.lons = np.load(path+'/lons.npy')
-        self.lats = np.load(path + '/lats.npy')
+        self.lons = np.load(path+'/lons.npy', allow_pickle=True)
+        self.lats = np.load(path + '/lats.npy', allow_pickle=True)
 
     def mapping(self, data=None):
         if data is None: data = self.data
