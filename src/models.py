@@ -14,7 +14,7 @@ from keras import backend as K
 
 class MyLasso:
     def __init__(self):
-        self.model = Lasso(alpha=0.1, max_iter=1000)
+        self.model = Lasso(alpha=0.01, max_iter=1000)
 
         return
 
@@ -22,17 +22,17 @@ class MyLasso:
         y_clean, X_train_clean = clean_data(X=X_train, y=y_train)
         self.model.fit(X=X_train_clean, y=y_clean)
 
-    def predict(self, X_test, y_test):
+    def predict(self, X_test):
         mask = ~np.isnan(X_test).any(axis=1)
-        X_test_clean = X_test[mask]
+        pred_out = np.empty((X_test.shape[0]))
 
-        pred = self.model.predict(X_test_clean)
+        X_test = X_test[mask]
 
-        pred_out = np.empty_like(y_test)
+        pred = self.model.predict(X_test).ravel()
         pred_out[mask] = pred
         pred_out[~mask] = np.nan
         pred_out[pred_out < 0] = 0
-        return
+        return pred_out
 
 
 def reshape2d(array):
@@ -70,8 +70,7 @@ class MyLSTM:
         self.model.add(Dense(1))
 
         self.model.compile(loss=parameters['loss'], optimizer='adam')
-        #self.model.compile(loss=root_mean_squared_error, optimizer='adam')
-        print(self.model.summary())
+        # print(self.model.summary())
         self.history = self.model.fit(X_train, y_train,
                                       epochs=parameters['epochs'],
                                       batch_size=parameters['batch_size'],
