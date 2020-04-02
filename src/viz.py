@@ -10,8 +10,8 @@ class Plot:
     def __init__(self, data=None):
         path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'data'))
         self.data = data
-        self.lons = np.load(path+'/lons.npy')
-        self.lats = np.load(path + '/lats.npy')
+        self.lons = np.load(path+'/lons.npy', allow_pickle=True)
+        self.lats = np.load(path + '/lats.npy', allow_pickle=True)
 
     def mapping(self, data=None):
         if data is None: data = self.data
@@ -25,7 +25,6 @@ class Plot:
         m.fillcontinents()
         m.drawmapboundary(fill_color='white')
         m.drawcountries()
-        # cmp = cm.get_cmap('rainbow', 11)
         cmap = plt.get_cmap('rainbow')
         cmap.set_bad('white')
         m.pcolormesh(xi, yi, data, cmap=cmap, alpha=1, edgecolors='none')
