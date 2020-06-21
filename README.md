@@ -1,1 +1,3 @@
-# surrogate
+# The data-driven approach to sea ice thickness simulation and restoration in Arctic Ocean
+
+At the present study the surrogate sea ice thickness datasets are built using a data-driven approach. Two approaches to modeling of simulation a time-varying field are developed. In the first one, simulation is performed separately for each cell of the modeling domain. The second approach is based on multivariate spatially-distributed data, with fixed time dimension. In order to perform the simulation, 3 data-driven models were implemented and compared to reference datasets. Afterward, these datasets were assimilated into the NEMO-LIM3 joint numerical sea-ice model by setting them as a surface condition. The results of these NEMO-LIM3 runs were compared to NEMO-LIM3 run without data assimilation and to reference datasets.
